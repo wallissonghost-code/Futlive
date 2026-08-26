@@ -89,7 +89,7 @@ function boot(){
   cont.addEventListener('click',()=>{overlay.classList.remove('show');if(autoPaused&&game.classList.contains('is-paused'))pauseBtn.click();autoPaused=false});
   restart.addEventListener('click',()=>{engine.score={blue:0,red:0};engine.renderScore();engine.resetBall();overlay.classList.remove('show');if(game.classList.contains('is-paused'))pauseBtn.click();autoPaused=false});
 
-  const v=document.querySelector('.version');if(v)v.textContent='BETA 0.36';
+  const v=document.querySelector('.version');if(v)v.textContent='BETA '+(window.FutLiveConfig?.version||'0.36');
 }
 boot();
 })();
