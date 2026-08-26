@@ -1,144 +1,24 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
-  <meta name="theme-color" content="#07110b" />
-  <title>Futlive · HUD de Doações</title>
-  <style>
-    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07110b;color:#fff;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-    body{position:fixed;inset:0;touch-action:manipulation;user-select:none}
-    .game{position:absolute;inset:0;overflow:hidden;background:#0c5b2b}
-    .pitch{position:absolute;inset:0;background:
-      linear-gradient(rgba(0,0,0,.13),rgba(0,0,0,.13)),
-      repeating-linear-gradient(90deg,#17763d 0 12.5%,#146d38 12.5% 25%)}
-    .pitch:before{content:"";position:absolute;inset:7% 4%;border:2px solid rgba(255,255,255,.52);border-radius:2px}
-    .midline{position:absolute;top:7%;bottom:7%;left:50%;width:2px;background:rgba(255,255,255,.5);transform:translateX(-1px)}
-    .circle{position:absolute;left:50%;top:50%;width:110px;height:110px;border:2px solid rgba(255,255,255,.5);border-radius:50%;transform:translate(-50%,-50%)}
-    .goal{position:absolute;top:36%;width:34px;height:28%;border:2px solid rgba(255,255,255,.64);background:rgba(255,255,255,.05)}
-    .goal.left{left:4%;border-left:0}.goal.right{right:4%;border-right:0}
-    .player{position:absolute;width:22px;height:22px;border-radius:50%;border:2px solid rgba(255,255,255,.8);box-shadow:0 4px 10px rgba(0,0,0,.42)}
-    .player.blue{background:#287cff}.player.red{background:#ef384b}
-    .ball{position:absolute;left:52%;top:43%;width:15px;height:15px;border-radius:50%;background:#fff;border:2px solid #171717;box-shadow:0 3px 8px rgba(0,0,0,.45)}
-    .p1{left:20%;top:37%}.p2{left:34%;top:58%}.p3{left:42%;top:27%}.p4{right:20%;top:57%}.p5{right:34%;top:33%}.p6{right:43%;top:67%}
-
-    .topbar{position:absolute;z-index:10;top:max(8px,env(safe-area-inset-top));left:10px;right:10px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;pointer-events:none}
-    .team{font-size:11px;font-weight:950;letter-spacing:.06em;text-shadow:0 2px 8px #000}.team.right{text-align:right}
-    .scorebox{min-width:98px;text-align:center;padding:7px 10px;border-radius:14px;background:rgba(6,11,16,.78);border:1px solid rgba(255,255,255,.15);backdrop-filter:blur(10px);box-shadow:0 8px 24px rgba(0,0,0,.26)}
-    .scorebox b{display:block;font-size:15px;line-height:1}.scorebox small{display:block;margin-top:3px;font-size:7px;letter-spacing:.14em;color:#8ce6a6;font-weight:900}
-
-    .livehud{position:absolute;z-index:20;left:8px;right:8px;bottom:max(8px,env(safe-area-inset-bottom));pointer-events:none}
-    .hud-title{display:flex;justify-content:center;align-items:center;gap:7px;margin-bottom:6px;font-size:8px;font-weight:950;letter-spacing:.18em;text-shadow:0 2px 8px #000}
-    .hud-title small{font-size:6px;color:#a9b3c0;letter-spacing:.12em}
-    .sides{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-    .side{position:relative;overflow:hidden;border-radius:15px;padding:7px;background:linear-gradient(180deg,rgba(15,22,32,.88),rgba(5,9,15,.92));border:1px solid rgba(255,255,255,.13);backdrop-filter:blur(13px);box-shadow:0 14px 34px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.07)}
-    .side:before{content:"";position:absolute;inset:0;opacity:.18;pointer-events:none}.side.blue:before{background:radial-gradient(circle at 0 0,#2e82ff,transparent 58%)}.side.red:before{background:radial-gradient(circle at 100% 0,#ff4154,transparent 58%)}
-    .side-head{position:relative;display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:6px;font-size:8px;font-weight:950;letter-spacing:.12em}.dot{width:7px;height:7px;border-radius:50%}.blue .dot{background:#2d82ff}.red .dot{background:#ff3d50}
-    .rules{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:5px}
-    .rule{min-width:0;height:48px;display:flex;align-items:center;gap:5px;padding:5px;border-radius:11px;background:linear-gradient(180deg,rgba(7,12,20,.96),rgba(4,8,13,.96));border:1px solid rgba(255,255,255,.09);box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
-    .gift{width:31px;height:31px;flex:0 0 31px;display:grid;place-items:center;font-size:24px;object-fit:contain;filter:drop-shadow(0 5px 8px rgba(0,0,0,.75))}
-    img.gift{display:block}
-    .copy{min-width:0}.copy b{display:block;font-size:8px;line-height:1.08;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.blue .copy b{color:#bfd7ff}.red .copy b{color:#ffc1c8}.copy small{display:block;margin-top:3px;font-size:6px;color:#8793a2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .lock{margin-left:auto;align-self:flex-start;font-size:7px;opacity:.55}
-    .comment{position:relative;margin-top:6px;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 7px;border-radius:10px;background:rgba(4,8,14,.85);border:1px solid rgba(255,255,255,.09)}
-    .comment span{font-size:6px;color:#8894a3;font-weight:900;letter-spacing:.1em}.comment b{font-size:8px;padding:4px 6px;border-radius:999px;background:#060b12;border:1px solid rgba(255,255,255,.1)}.blue .comment b{color:#bcd6ff;border-color:rgba(68,139,255,.28)}.red .comment b{color:#ffb9c1;border-color:rgba(255,77,96,.28)}
-    .status{position:absolute;right:8px;top:-23px;padding:4px 7px;border-radius:999px;background:rgba(4,8,13,.78);border:1px solid rgba(255,255,255,.12);font-size:6px;color:#95a2b1;font-weight:900;letter-spacing:.08em;backdrop-filter:blur(8px)}.status.on{color:#84e6a2}
-
-    @media(max-width:390px){.livehud{left:6px;right:6px}.side{padding:6px}.rule{height:45px;padding:4px}.gift{width:28px;height:28px;flex-basis:28px;font-size:21px}.copy b{font-size:7.5px}.copy small{font-size:5.7px}.comment{padding:5px 6px}.hud-title small{display:none}}
-    @media(orientation:landscape){.livehud{left:2%;right:2%;bottom:max(5px,env(safe-area-inset-bottom))}.sides{gap:10px}.rules{grid-template-columns:repeat(4,1fr)}.rule{height:42px}.comment{display:none}}
-  </style>
-</head>
-<body>
-  <main class="game" id="game">
-    <div class="pitch" aria-hidden="true"></div>
-    <div class="midline" aria-hidden="true"></div><div class="circle" aria-hidden="true"></div>
-    <div class="goal left" aria-hidden="true"></div><div class="goal right" aria-hidden="true"></div>
-    <i class="player blue p1"></i><i class="player blue p2"></i><i class="player blue p3"></i>
-    <i class="player red p4"></i><i class="player red p5"></i><i class="player red p6"></i><i class="ball"></i>
-
-    <div class="topbar">
-      <div class="team">🔵 AZUL</div>
-      <div class="scorebox"><b>1 &nbsp;×&nbsp; 0</b><small>⏱ 01:42 · PAINEL</small></div>
-      <div class="team right">VERMELHO 🔴</div>
-    </div>
-
-    <section class="livehud" aria-label="Presentes da partida">
-      <div class="status" id="panelStatus">PAINEL AGUARDANDO</div>
-      <div class="hud-title">⚽ PRESENTES DA PARTIDA <small>BUFFS NÃO GARANTEM O RESULTADO</small></div>
-      <div class="sides">
-        <div class="side blue" data-team="blue">
-          <div class="side-head"><i class="dot"></i> AZUL</div>
-          <div class="rules" id="blueRules"></div>
-          <div class="comment"><span>💬 COMENTE</span><b>AZUL · + IMPULSO</b></div>
-        </div>
-        <div class="side red" data-team="red">
-          <div class="side-head"><i class="dot"></i> VERMELHO</div>
-          <div class="rules" id="redRules"></div>
-          <div class="comment"><span>💬 COMENTE</span><b>VERMELHO · + IMPULSO</b></div>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <script>
-    (()=>{
-      const root=document.documentElement;
-      const panelStatus=document.getElementById('panelStatus');
-      const containers={blue:document.getElementById('blueRules'),red:document.getElementById('redRules')};
-      const defaults={
-        blue:[
-          {id:'rose',fixed:true,name:'Rosa',emoji:'🌹',action:'+ Precisão',detail:'buff leve'},
-          {id:'football',fixed:true,name:'Bola',emoji:'⚽',action:'+ Finalização',detail:'melhora o chute'},
-          {id:'custom-1',fixed:false,name:'Presente 3',emoji:'🎁',action:'+ Força',detail:'editável no painel'},
-          {id:'custom-2',fixed:false,name:'Presente 4',emoji:'✨',action:'+ Velocidade',detail:'editável no painel'}
-        ],
-        red:[
-          {id:'rose',fixed:true,name:'Rosa',emoji:'🌹',action:'+ Precisão',detail:'buff leve'},
-          {id:'football',fixed:true,name:'Bola',emoji:'⚽',action:'+ Finalização',detail:'melhora o chute'},
-          {id:'custom-1',fixed:false,name:'Presente 3',emoji:'🎁',action:'+ Força',detail:'editável no painel'},
-          {id:'custom-2',fixed:false,name:'Presente 4',emoji:'✨',action:'+ Velocidade',detail:'editável no painel'}
-        ]
-      };
-      const state=JSON.parse(JSON.stringify(defaults));
-
-      function safeText(v,fallback=''){return typeof v==='string'&&v.trim()?v.trim():fallback}
-      function renderGift(g){
-        const card=document.createElement('div'); card.className='rule'; card.dataset.slot=g.id;
-        let visual;
-        if(g.imageUrl){visual=document.createElement('img');visual.className='gift';visual.src=g.imageUrl;visual.alt=g.name||'Presente';visual.onerror=()=>{visual.replaceWith(makeEmoji(g.emoji||'🎁'))}}
-        else visual=makeEmoji(g.emoji||'🎁');
-        const copy=document.createElement('div'); copy.className='copy';
-        const action=document.createElement('b');action.textContent=safeText(g.action,'+ Buff');
-        const detail=document.createElement('small');detail.textContent=safeText(g.name,g.detail||'Presente');
-        copy.append(action,detail);card.append(visual,copy);
-        if(g.fixed){const lock=document.createElement('span');lock.className='lock';lock.textContent='🔒';lock.title='Pré-fixado';card.append(lock)}
-        return card;
-      }
-      function makeEmoji(emoji){const el=document.createElement('span');el.className='gift';el.textContent=emoji;return el}
-      function render(){for(const team of ['blue','red']){containers[team].replaceChildren(...state[team].map(renderGift))}}
-
-      function applySlot(team,slot,patch){
-        if(!containers[team]||!slot)return false;
-        const item=state[team].find(x=>x.id===slot); if(!item)return false;
-        if(item.fixed)return false;
-        const allowed=['name','emoji','imageUrl','action','detail'];
-        for(const key of allowed)if(Object.prototype.hasOwnProperty.call(patch,key))item[key]=patch[key];
-        render(); panelStatus.textContent='PAINEL CONECTADO';panelStatus.classList.add('on');return true;
-      }
-      function applyConfig(payload){
-        if(!payload||typeof payload!=='object')return;
-        if(Array.isArray(payload.slots))payload.slots.forEach(x=>x&&applySlot(x.team,x.slot,x));
-        else if(payload.team&&payload.slot)applySlot(payload.team,payload.slot,payload);
-      }
-
-      // Contrato simples para o painel/SDK: imagens e textos dos slots editáveis atualizam em tempo real.
-      window.FutLiveHUD={applyConfig,getState:()=>JSON.parse(JSON.stringify(state)),reset:()=>{Object.assign(state,JSON.parse(JSON.stringify(defaults)));render()}};
-      window.addEventListener('message',e=>{const d=e.data;if(d&&d.type==='FUTLIVE_HUD_CONFIG')applyConfig(d.payload)});
-      window.addEventListener('futlive-hud-config',e=>applyConfig(e.detail));
-      if('BroadcastChannel' in window){const ch=new BroadcastChannel('futlive-hud');ch.addEventListener('message',e=>{const d=e.data;if(d&&d.type==='FUTLIVE_HUD_CONFIG')applyConfig(d.payload)});window.FutLiveHUD.channel=ch}
-      render();
-    })();
-  </script>
-</body>
-</html>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b6a35">
+<title>Futlive · HUD de Doações</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0b6a35;color:#fff;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{position:fixed;inset:0;touch-action:manipulation;user-select:none;overscroll-behavior:none}
+.game{position:fixed;inset:0;width:100%;height:100%;overflow:hidden;background:#0c5b2b}
+.pitch{position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,.10),rgba(0,0,0,.10)),repeating-linear-gradient(90deg,#17763d 0 12.5%,#146d38 12.5% 25%)}
+.pitch:before{content:"";position:absolute;inset:7% 4%;border:2px solid rgba(255,255,255,.52)}
+.midline{position:absolute;top:7%;bottom:7%;left:50%;width:2px;background:rgba(255,255,255,.5);transform:translateX(-1px)}
+.circle{position:absolute;left:50%;top:50%;width:110px;height:110px;border:2px solid rgba(255,255,255,.5);border-radius:50%;transform:translate(-50%,-50%)}
+.goal{position:absolute;top:36%;width:34px;height:28%;border:2px solid rgba(255,255,255,.64);background:rgba(255,255,255,.05)}.goal.left{left:4%;border-left:0}.goal.right{right:4%;border-right:0}
+.player{position:absolute;width:22px;height:22px;border-radius:50%;border:2px solid rgba(255,255,255,.8);box-shadow:0 4px 10px #0006}.player.blue{background:#287cff}.player.red{background:#ef384b}.ball{position:absolute;left:52%;top:43%;width:15px;height:15px;border-radius:50%;background:#fff;border:2px solid #171717;box-shadow:0 3px 8px #0007}.p1{left:20%;top:37%}.p2{left:34%;top:58%}.p3{left:42%;top:27%}.p4{right:20%;top:57%}.p5{right:34%;top:33%}.p6{right:43%;top:67%}
+.topbar{position:absolute;z-index:10;top:max(8px,env(safe-area-inset-top));left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;pointer-events:none}.team{font-size:11px;font-weight:950;letter-spacing:.06em;text-shadow:0 2px 8px #000}.team.right{text-align:right}.scorebox{min-width:98px;text-align:center;padding:7px 10px;border-radius:14px;background:#060b10c7;border:1px solid #ffffff26;backdrop-filter:blur(10px);box-shadow:0 8px 24px #0004}.scorebox b{display:block;font-size:15px;line-height:1}.scorebox small{display:block;margin-top:3px;font-size:7px;letter-spacing:.14em;color:#8ce6a6;font-weight:900}
+.livehud{position:absolute;z-index:20;left:0;right:0;bottom:0;pointer-events:none}.hud-title{display:flex;justify-content:center;align-items:center;gap:7px;margin:0 0 5px;font-size:8px;font-weight:950;letter-spacing:.18em;text-shadow:0 2px 8px #000}.hud-title small{font-size:6px;color:#d3dae3;letter-spacing:.12em}.sides{display:grid;grid-template-columns:1fr 1fr;gap:0;width:100%}.side{position:relative;overflow:hidden;border-radius:0;padding:7px 7px calc(7px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(15,22,32,.88),rgba(5,9,15,.96));border:0;border-top:1px solid rgba(255,255,255,.13);backdrop-filter:blur(13px);box-shadow:0 -12px 30px #0005,inset 0 1px 0 #ffffff0d}.side.blue{border-right:1px solid #ffffff12}.side:before{content:"";position:absolute;inset:0;opacity:.18;pointer-events:none}.side.blue:before{background:radial-gradient(circle at 0 0,#2e82ff,transparent 58%)}.side.red:before{background:radial-gradient(circle at 100% 0,#ff4154,transparent 58%)}.side-head{position:relative;display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:6px;font-size:8px;font-weight:950;letter-spacing:.12em}.dot{width:7px;height:7px;border-radius:50%}.blue .dot{background:#2d82ff}.red .dot{background:#ff3d50}.rules{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:5px}.rule{min-width:0;height:48px;display:flex;align-items:center;gap:5px;padding:5px;border-radius:11px;background:linear-gradient(180deg,#070c14f5,#04080df5);border:1px solid #ffffff17;box-shadow:inset 0 1px 0 #ffffff0d}.gift{width:31px;height:31px;flex:0 0 31px;display:grid;place-items:center;font-size:24px;object-fit:contain;filter:drop-shadow(0 5px 8px #000c)}img.gift{display:block}.copy{min-width:0}.copy b{display:block;font-size:8px;line-height:1.08;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.blue .copy b{color:#bfd7ff}.red .copy b{color:#ffc1c8}.copy small{display:block;margin-top:3px;font-size:6px;color:#8793a2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lock{margin-left:auto;align-self:flex-start;font-size:7px;opacity:.55}.comment{position:relative;margin-top:6px;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 7px;border-radius:10px;background:#04080ed9;border:1px solid #ffffff17}.comment span{font-size:6px;color:#8894a3;font-weight:900;letter-spacing:.1em}.comment b{font-size:8px;padding:4px 6px;border-radius:999px;background:#060b12;border:1px solid #ffffff1a}.blue .comment b{color:#bcd6ff;border-color:#448bff47}.red .comment b{color:#ffb9c1;border-color:#ff4d6047}.status{position:absolute;right:max(8px,env(safe-area-inset-right));top:-23px;padding:4px 7px;border-radius:999px;background:#04080dc7;border:1px solid #ffffff1f;font-size:6px;color:#95a2b1;font-weight:900;letter-spacing:.08em;backdrop-filter:blur(8px)}.status.on{color:#84e6a2}
+@media(max-width:390px){.side{padding:6px 6px calc(6px + env(safe-area-inset-bottom))}.rule{height:45px;padding:4px}.gift{width:28px;height:28px;flex-basis:28px;font-size:21px}.copy b{font-size:7.5px}.copy small{font-size:5.7px}.comment{padding:5px 6px}.hud-title small{display:none}}
+@media(orientation:landscape){.rules{grid-template-columns:repeat(4,1fr)}.rule{height:42px}.comment{display:none}.side{padding-bottom:calc(5px + env(safe-area-inset-bottom))}}
+</style>
+</head><body><main class="game" id="game"><div class="pitch"></div><div class="midline"></div><div class="circle"></div><div class="goal left"></div><div class="goal right"></div><i class="player blue p1"></i><i class="player blue p2"></i><i class="player blue p3"></i><i class="player red p4"></i><i class="player red p5"></i><i class="player red p6"></i><i class="ball"></i><div class="topbar"><div class="team">🔵 AZUL</div><div class="scorebox"><b>1 &nbsp;×&nbsp; 0</b><small>⏱ 01:42 · PAINEL</small></div><div class="team right">VERMELHO 🔴</div></div><section class="livehud" aria-label="Presentes da partida"><div class="status" id="panelStatus">PAINEL AGUARDANDO</div><div class="hud-title">⚽ PRESENTES DA PARTIDA <small>BUFFS NÃO GARANTEM O RESULTADO</small></div><div class="sides"><div class="side blue"><div class="side-head"><i class="dot"></i> AZUL</div><div class="rules" id="blueRules"></div><div class="comment"><span>💬 COMENTE</span><b>AZUL · + IMPULSO</b></div></div><div class="side red"><div class="side-head"><i class="dot"></i> VERMELHO</div><div class="rules" id="redRules"></div><div class="comment"><span>💬 COMENTE</span><b>VERMELHO · + IMPULSO</b></div></div></div></section></main><script>(()=>{const panelStatus=document.getElementById('panelStatus'),containers={blue:document.getElementById('blueRules'),red:document.getElementById('redRules')};const defaults={blue:[{id:'rose',fixed:true,name:'Rosa',emoji:'🌹',action:'+ Precisão',detail:'buff leve'},{id:'football',fixed:true,name:'Bola',emoji:'⚽',action:'+ Finalização',detail:'melhora o chute'},{id:'custom-1',fixed:false,name:'Presente 3',emoji:'🎁',action:'+ Força',detail:'editável no painel'},{id:'custom-2',fixed:false,name:'Presente 4',emoji:'✨',action:'+ Velocidade',detail:'editável no painel'}],red:[{id:'rose',fixed:true,name:'Rosa',emoji:'🌹',action:'+ Precisão',detail:'buff leve'},{id:'football',fixed:true,name:'Bola',emoji:'⚽',action:'+ Finalização',detail:'melhora o chute'},{id:'custom-1',fixed:false,name:'Presente 3',emoji:'🎁',action:'+ Força',detail:'editável no painel'},{id:'custom-2',fixed:false,name:'Presente 4',emoji:'✨',action:'+ Velocidade',detail:'editável no painel'}]};let state=JSON.parse(JSON.stringify(defaults));function emoji(v){const e=document.createElement('span');e.className='gift';e.textContent=v||'🎁';return e}function card(g){const c=document.createElement('div');c.className='rule';c.dataset.slot=g.id;let v;if(g.imageUrl){v=document.createElement('img');v.className='gift';v.src=g.imageUrl;v.alt=g.name||'Presente';v.onerror=()=>v.replaceWith(emoji(g.emoji))}else v=emoji(g.emoji);const cp=document.createElement('div');cp.className='copy';const b=document.createElement('b');b.textContent=g.action||'+ Buff';const s=document.createElement('small');s.textContent=g.name||g.detail||'Presente';cp.append(b,s);c.append(v,cp);if(g.fixed){const l=document.createElement('span');l.className='lock';l.textContent='🔒';c.append(l)}return c}function render(){for(const t of ['blue','red'])containers[t].replaceChildren(...state[t].map(card))}function applySlot(team,slot,patch){const item=state[team]?.find(x=>x.id===slot);if(!item||item.fixed)return false;for(const k of ['name','emoji','imageUrl','action','detail'])if(Object.prototype.hasOwnProperty.call(patch,k))item[k]=patch[k];render();panelStatus.textContent='PAINEL CONECTADO';panelStatus.classList.add('on');return true}function applyConfig(p){if(!p||typeof p!=='object')return;if(Array.isArray(p.slots))p.slots.forEach(x=>x&&applySlot(x.team,x.slot,x));else if(p.team&&p.slot)applySlot(p.team,p.slot,p)}window.FutLiveHUD={applyConfig,getState:()=>JSON.parse(JSON.stringify(state)),reset:()=>{state=JSON.parse(JSON.stringify(defaults));render()}};window.addEventListener('message',e=>{if(e.data?.type==='FUTLIVE_HUD_CONFIG')applyConfig(e.data.payload)});window.addEventListener('futlive-hud-config',e=>applyConfig(e.detail));if('BroadcastChannel'in window){const ch=new BroadcastChannel('futlive-hud');ch.addEventListener('message',e=>{if(e.data?.type==='FUTLIVE_HUD_CONFIG')applyConfig(e.data.payload)});window.FutLiveHUD.channel=ch}render()})();</script></body></html>
