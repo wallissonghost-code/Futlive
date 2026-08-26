@@ -17,20 +17,24 @@ function boot(){
   }
   function start(p,c){
     const dx=c.x-p.x,dy=c.y-p.y,d=Math.hypot(dx,dy)||1,now=performance.now();p.facing=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');
-    const rec={owner:c,nx:dx/d,ny:dy/d,start:now,end:now+360,contact:false};active.set(p,rec);cooldown.set(p,now+4400+Math.random()*1800);p.ctrl.slide();p.lastDir='slide'
+    const rec={owner:c,nx:dx/d,ny:dy/d,start:now,end:now+360,contact:false,failed:false,success:false};active.set(p,rec);cooldown.set(p,now+4400+Math.random()*1800);p.ctrl.slide();p.lastDir='slide'
   }
+  function finish(p,s,missPenalty=0){const now=performance.now();active.delete(p);vulnerable.set(p,now+missPenalty);if(missPenalty>500)p.ctrl.idle()}
   function updateSlides(dt){
     const now=performance.now();for(const [p,s] of [...active]){
-      if(!e.ball.owner||e.ball.owner!==s.owner){active.delete(p);continue}
-      p.x+=s.nx*p.speed*1.62*dt;p.y+=s.ny*p.speed*1.62*dt;
-      const owner=s.owner,ballDist=e.footDist(p),body=e.dist(p,owner);
-      if(!s.contact&&(ballDist<=16||body<=p.radius+owner.radius+4)){
-        s.contact=true;const defend=p.skill.defend||.5,comp=p.skill.composure||.5,control=owner.skill.control||.5,angle=clamp(facingDot(p,owner),0,1),reach=clamp(1-ballDist/20,0,1);
-        const success=clamp(.18+defend*.38+comp*.16+angle*.16+reach*.16-control*.20,.12,.88);
-        if(Math.random()<success){e.knockLoose(owner,p);if(e.ball.owner===null){e.ball.vx=s.nx*(55+p.speed*.45);e.ball.vy=s.ny*(55+p.speed*.45);e.ball.type='slide-loose';e.ball.pickupLock=now+150}active.delete(p);vulnerable.set(p,now+360);continue}
-        vulnerable.set(p,now+900);active.delete(p);continue
+      // Após acertar/errar, mantém o bloqueio de movimento até completar os frames 31-32.
+      if(!s.failed&&!s.success&&(!e.ball.owner||e.ball.owner!==s.owner)){finish(p,s,360);continue}
+      p.x+=s.nx*p.speed*(s.failed?.72:1.62)*dt;p.y+=s.ny*p.speed*(s.failed?.72:1.62)*dt;
+      if(!s.failed&&!s.success){
+        const owner=s.owner,ballDist=e.footDist(p),body=e.dist(p,owner);
+        if(!s.contact&&(ballDist<=16||body<=p.radius+owner.radius+4)){
+          s.contact=true;const defend=p.skill.defend||.5,comp=p.skill.composure||.5,control=owner.skill.control||.5,angle=clamp(facingDot(p,owner),0,1),reach=clamp(1-ballDist/20,0,1);
+          const successChance=clamp(.18+defend*.38+comp*.16+angle*.16+reach*.16-control*.20,.12,.88);
+          if(Math.random()<successChance){s.success=true;e.knockLoose(owner,p);if(e.ball.owner===null){e.ball.vx=s.nx*(55+p.speed*.45);e.ball.vy=s.ny*(55+p.speed*.45);e.ball.type='slide-loose';e.ball.pickupLock=now+150}}
+          else{s.failed=true;s.end=Math.max(s.end,now+180)}
+        }
       }
-      if(now>=s.end){active.delete(p);vulnerable.set(p,now+920)}
+      if(now>=s.end)finish(p,s,s.failed?920:360)
     }
   }
   e.ownedAI=(dt,f)=>{
