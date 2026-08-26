@@ -10,12 +10,14 @@ function boot(){
   if(!game.classList.contains('is-paused'))pauseBtn.click();
   e.score={blue:0,red:0};e.renderScore();setPhase(PHASES.PRE_MATCH);
   const status=document.querySelector('.scorebox small');if(status)status.textContent='⏱ 00:00 · PRÉ-JOGO';
-  // Próximo task: gameplay/emotion/contact já terminaram de instalar suas camadas.
-  setTimeout(()=>setupStage(e,game,pauseBtn,status),0);
+  waitForLayers(e,game,pauseBtn,status);
+}
+function waitForLayers(e,game,pauseBtn,status){
+  if(!window.FutLiveEmotionSystem||!window.FutLiveBallContact||!window.FutLiveTackleSystem){setTimeout(()=>waitForLayers(e,game,pauseBtn,status),30);return}
+  setupStage(e,game,pauseBtn,status)
 }
 function setupStage(e,game,pauseBtn,status){
   const f=e.field(),targets=new Map();for(const p of e.players)targets.set(p,{x:f.w*p.home[0],y:f.h*p.home[1]});
-  // Durante a entrada o goleiro também é um ator comum; restaura-se a regra do gol ao ficar READY.
   state.playPinGoalkeeper=e.pinGoalkeeper.bind(e);e.pinGoalkeeper=()=>{};
   const lanes=[-.23,-.08,.08,.23,0];
   for(const p of e.players){const sign=p.team==='blue'?-1:1,slotLane=lanes[p.slot]||0;p.x=f.w*.5+sign*(p.goalkeeper?58:34);p.y=f.h*(.5+slotLane);p.lastDir='idle';p.facing=p.team==='blue'?'left':'right';p.ctrl.idle()}
