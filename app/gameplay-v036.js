@@ -1,0 +1,95 @@
+(()=>{'use strict';
+function boot(){
+  const game=document.getElementById('game'),pauseBtn=document.getElementById('pauseBtn');
+  const engine=window.FutLiveFootballEngine;
+  if(!game||!pauseBtn||!engine){setTimeout(boot,100);return}
+
+  // Mantém o ritmo da 0.35 e dá mais intenção ofensiva no último terço.
+  engine.players.forEach(p=>{
+    if(!p.goalkeeper){
+      p.skill.shoot=Math.max(p.skill.shoot,.72);
+      p.skill.composure=Math.max(p.skill.composure,.68);
+    }
+  });
+
+  // No último terço o portador deixa de procurar passe por padrão e passa a atacar a meta.
+  // Isso usa a IA existente sem criar teleporte nem alterar física/colisão.
+  const originalChoosePassTarget=engine.choosePassTarget.bind(engine);
+  engine.choosePassTarget=(carrier)=>{
+    if(carrier&&!carrier.goalkeeper){
+      const f=engine.field();
+      const goalX=carrier.team==='blue'?f.right:f.left;
+      const goalDist=Math.abs(goalX-carrier.x);
+      if(goalDist<f.w*.31)return null;
+    }
+    return originalChoosePassTarget(carrier);
+  };
+
+  // Goleiro permanece à frente da linha do gol.
+  engine.pinGoalkeeper=(p,f)=>{
+    p.x=p.team==='blue'?f.left+46:f.right-46;
+    p.y=engine.clamp(p.y,f.goalTop+8,f.goalBottom-27-6);
+  };
+  engine.goalkeepers.forEach(g=>engine.pinGoalkeeper(g,engine.field()));
+
+  // Overlay visual de gol.
+  const style=document.createElement('style');
+  style.textContent=`
+    .goalFlash{position:fixed;z-index:95;left:50%;top:34%;transform:translate(-50%,-50%) scale(.72);opacity:0;pointer-events:none;text-align:center;transition:.18s ease}
+    .goalFlash.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+    .goalFlash .goalWord{font-size:44px;line-height:.9;font-weight:1000;letter-spacing:.04em;text-shadow:0 5px 16px #000c}
+    .goalFlash .goalTeam{display:inline-block;margin-top:10px;padding:8px 15px;border-radius:999px;background:#071019e8;border:1px solid #ffffff2b;font-size:10px;font-weight:950;letter-spacing:.12em}
+    .goalFlash.blue .goalWord,.goalFlash.blue .goalTeam{color:#73a9ff}
+    .goalFlash.red .goalWord,.goalFlash.red .goalTeam{color:#ff7785}
+    .goalFlash .goalScore{margin-top:7px;font-size:18px;font-weight:1000;text-shadow:0 3px 10px #000b}
+  `;
+  document.head.appendChild(style);
+  const flash=document.createElement('div');
+  flash.className='goalFlash';
+  flash.innerHTML='<div class="goalWord">GOOOL!</div><div class="goalTeam"></div><div class="goalScore"></div>';
+  document.body.appendChild(flash);
+
+  let goalLock=false;
+  engine.goal=(team)=>{
+    if(goalLock)return;
+    goalLock=true;
+    const wasPaused=game.classList.contains('is-paused');
+    engine.score[team]++;
+    engine.renderScore();
+    game.dataset.lastGoal=team;
+    engine.ball.x=engine.ball.y=-999;
+    engine.ball.vx=engine.ball.vy=0;
+    engine.ball.owner=null;
+
+    flash.className='goalFlash '+team+' show';
+    flash.querySelector('.goalTeam').textContent=team==='blue'?'🔵 GOL DO AZUL':'🔴 GOL DO VERMELHO';
+    flash.querySelector('.goalScore').textContent=engine.score.blue+' × '+engine.score.red;
+    game.classList.add('is-paused');
+
+    setTimeout(()=>{
+      engine.resetBall();
+      flash.classList.remove('show');
+      if(!wasPaused)game.classList.remove('is-paused');
+      goalLock=false;
+    },2200);
+  };
+
+  // Pausa automática ao sair e escolha ao voltar.
+  const overlay=document.createElement('div');
+  overlay.className='returnOverlay';
+  overlay.innerHTML='<div class="returnCard"><h2>Partida pausada</h2><p>Você saiu do jogo. Quer continuar de onde parou ou reiniciar a partida?</p><div class="returnActions"><button class="restartGame" type="button">REINICIAR</button><button class="continueGame" type="button">CONTINUAR</button></div></div>';
+  document.body.appendChild(overlay);
+  const restart=overlay.querySelector('.restartGame'),cont=overlay.querySelector('.continueGame');
+  let autoPaused=false;
+  function pauseForExit(){if(game.classList.contains('is-paused')){autoPaused=false;return}pauseBtn.click();autoPaused=true}
+  function showReturn(){if(autoPaused)overlay.classList.add('show')}
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseForExit();else showReturn()});
+  window.addEventListener('pagehide',pauseForExit);
+  window.addEventListener('pageshow',()=>{if(!document.hidden)showReturn()});
+  cont.addEventListener('click',()=>{overlay.classList.remove('show');if(autoPaused&&game.classList.contains('is-paused'))pauseBtn.click();autoPaused=false});
+  restart.addEventListener('click',()=>{engine.score={blue:0,red:0};engine.renderScore();engine.resetBall();overlay.classList.remove('show');if(game.classList.contains('is-paused'))pauseBtn.click();autoPaused=false});
+
+  const v=document.querySelector('.version');if(v)v.textContent='BETA 0.36';
+}
+boot();
+})();
