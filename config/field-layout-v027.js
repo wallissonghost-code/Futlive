@@ -1,0 +1,1 @@
+window.FutLiveFieldLayout=Object.freeze({version:'0.27',mode:'landscape-16x9',aspectRatio:16/9,map:'./assets/maps/BDA9D67F-DDF2-4429-BF0A-84EC5AE497E8.png',goals:{left:'./assets/goals/frame_001.png',right:'./assets/goals/frame_003.png'},bounds:{left:.022,right:.978,top:.035,bottom:.965},goal:{top:.365,bottom:.635,depth:.035}});
