@@ -1,27 +1,16 @@
 (()=>{'use strict';
-const COMPONENT_VERSION='0.15';
+const COMPONENT_VERSION='0.16';
 class FutLivePlayerSprite{
   constructor({element,base='./assets/players/team-1',frameCount=32,fps=8}={}){
     this.el=typeof element==='string'?document.querySelector(element):element;
     this.base=base.replace(/\/$/,'');this.frameCount=frameCount;this.fps=fps;
     this.frames=Array.from({length:frameCount},(_,i)=>`${this.base}/frame_${String(i+1).padStart(3,'0')}.png`);
-    this.animations={
-      idle:[1,2,3,4],
-      down:[5,6,7,8],
-      right:[9,10,11,12,13,14,15,16],
-      up:[17,18,19,20,21,22,23,24],
-      left:[25,26,27,28],
-      kick:[29,30],
-      slide:[31,32]
-    };
+    this.animations={idle:[1,2,3,4],down:[5,6,7,8],right:[9,10,11,12,13,14,15,16],up:[17,18,19,20,21,22,23,24],left:[25,26,27,28],kick:[29,30],slide:[31,32]};
     this.aliases={front:'down',back:'up',run_down:'down',run_right:'right',run_up:'up',run_left:'left',shoot:'kick',tackle:'slide'};
     this.state='idle';this.index=0;this.timer=null;this.img=null;this.returnTimer=null;
     this.mount();this.preload();this.syncVisibleVersion();
   }
-  syncVisibleVersion(){
-    const v=document.querySelector('.version');if(v)v.textContent='BETA '+COMPONENT_VERSION;
-    try{const u=new URL(location.href);if(u.searchParams.get('v')!==COMPONENT_VERSION){u.searchParams.set('v',COMPONENT_VERSION);u.searchParams.set('cb',Date.now().toString());history.replaceState(null,'',u.toString())}}catch{}
-  }
+  syncVisibleVersion(){const v=document.querySelector('.version');if(v)v.textContent='BETA '+COMPONENT_VERSION;try{const u=new URL(location.href);if(u.searchParams.get('v')!==COMPONENT_VERSION){u.searchParams.set('v',COMPONENT_VERSION);u.searchParams.set('cb',Date.now().toString());history.replaceState(null,'',u.toString())}}catch{}}
   src(frame){return this.frames[Math.max(1,Math.min(this.frameCount,frame))-1]}
   sequence(name=this.state){name=this.aliases[name]||name;return this.animations[name]||this.animations.idle}
   mount(){if(!this.el)return;this.el.classList.add('sprite-player');this.el.innerHTML='';const img=document.createElement('img');img.className='player-sprite-img';img.alt='Jogador Time 1';img.draggable=false;this.el.appendChild(img);this.img=img;this.show(0)}
@@ -38,5 +27,11 @@ class FutLivePlayerSprite{
   getState(){return{state:this.state,frame:this.sequence()[this.index],frames:[...this.sequence()]}}
   destroy(){clearTimeout(this.returnTimer);this.stop(false);if(this.el){this.el.innerHTML='';this.el.classList.remove('sprite-player')}}
 }
+function mountTeam1(){
+  window.FutLivePlayers=window.FutLivePlayers||{};
+  const slots=[['player1','.p1'],['player2','.p2'],['player3','.p3']];
+  for(const [key,selector] of slots){const el=document.querySelector(selector);if(!el||el.classList.contains('sprite-player'))continue;window.FutLivePlayers[key]=new FutLivePlayerSprite({element:el,base:'./assets/players/team-1',frameCount:32,fps:8}).idle()}
+}
 window.FutLivePlayerSprite=FutLivePlayerSprite;
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mountTeam1,{once:true});else setTimeout(mountTeam1,0);
 })();
