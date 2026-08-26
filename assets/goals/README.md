@@ -1,0 +1,1 @@
+Pasta reservada para este tipo de asset do Futlive. Mantenha arquivos finais organizados aqui; não subir assets soltos na raiz do repositório.

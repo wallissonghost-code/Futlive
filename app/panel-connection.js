@@ -1,0 +1,16 @@
+(()=>{'use strict';
+const cfg=window.FutLiveConfig,app=window.FutLiveApp;
+if(!cfg||!app)throw new Error('FutLive runtime não carregado');
+const $=id=>document.getElementById(id),panelBtn=$('panelBtn'),modal=$('panelModal'),panelCode=$('panelCode'),pairMessage=$('pairMessage');
+let peer=null,conn=null;
+const clean=v=>String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);
+const format=v=>{v=clean(v);return v.length>4?v.slice(0,4)+'-'+v.slice(4):v};
+const target=v=>'liveplus-session-'+clean(v).toLowerCase();
+function manifest(){const actions=[];for(const team of ['blue','red'])for(const id of ['precision','finish','force','speed','power','defense'])actions.push({id:`${team}_${id}`,label:`${team==='blue'?'Azul':'Vermelho'} · ${id}`,teams:[team]});return{type:'game_manifest',protocol:cfg.panel.manifestProtocol,manifest:{gameId:cfg.panel.gameId,name:cfg.panel.name,version:cfg.version,actions:[...actions,{id:'force',name:'Força',label:'💥 Força',teams:['blue','red'],test:true}]}}}
+function setConnected(on,text){panelBtn.textContent=on?'✓':'🔗';panelBtn.classList.toggle('connected',on);app.giftHud.setStatus(text,on)}
+function handlePanelMessage(d){if(!d||typeof d!=='object')return;if(d.type==='rules_sync'){app.giftHud.applyRulesSync(d.rules||[]);return}if(d.type==='hud_config'||d.type==='FUTLIVE_HUD_CONFIG'){app.giftHud.applyConfig(d.payload||d);return}const n=d.payload||d.data||{},raw=(String(d.action||d.command||d.id||d.name||d.effect||d.event||d.type||'')+' '+String(n.action||n.command||n.id||n.name||n.effect||n.event||'')).toLowerCase();if(raw.includes('forc')||raw.includes('force'))app.triggerForce(d.team||n.team||d.side||n.side||'blue')}
+function connect(){const c=clean(panelCode.value);panelCode.value=format(c);if(c.length!==8){pairMessage.textContent='Digite os 8 caracteres do painel.';return}try{peer?.destroy()}catch{}pairMessage.textContent='Conectando...';app.giftHud.setStatus('PAINEL CONECTANDO');peer=new Peer(undefined,{debug:0});peer.on('open',()=>{conn=peer.connect(target(c),{reliable:true,serialization:'json'});conn.on('open',()=>{let token='';try{token=sessionStorage.getItem('futlive-token:'+c)||''}catch{}conn.send({type:'session_hello',protocol:cfg.panel.protocol,token})});conn.on('data',d=>{if(d?.type==='session_accept'){if(d.token)try{sessionStorage.setItem('futlive-token:'+c,String(d.token))}catch{}try{localStorage.setItem('futlive-panel-code',format(c))}catch{}setConnected(true,'PAINEL CONECTADO');pairMessage.textContent='Conectado · '+format(c);pairMessage.className='pairMsg ok';conn.send(manifest());setTimeout(()=>modal.classList.remove('show'),350);return}handlePanelMessage(d)});conn.on('close',()=>setConnected(false,'PAINEL DESCONECTADO'))});peer.on('error',()=>{pairMessage.textContent='Não foi possível conectar.';setConnected(false,'PAINEL DESCONECTADO')})}
+panelBtn.onclick=()=>modal.classList.add('show');$('closeModal').onclick=()=>modal.classList.remove('show');$('connectPanel').onclick=connect;panelCode.oninput=()=>panelCode.value=format(panelCode.value);
+try{const saved=localStorage.getItem('futlive-panel-code');if(saved)panelCode.value=saved}catch{}
+window.FutLivePanel={connect,handlePanelMessage};
+})();

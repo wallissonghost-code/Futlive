@@ -1,31 +1,16 @@
 {
-  "version": "0.15",
-  "map": {
-    "active": "default",
-    "src": ""
-  },
+  "version": "0.23",
+  "map": {"active":"default","src":""},
   "players": {
-    "team-1": {
-      "src": "./assets/players/team-1/frame_001.png",
-      "frames": [
-        "./assets/players/team-1/frame_001.png","./assets/players/team-1/frame_002.png","./assets/players/team-1/frame_003.png","./assets/players/team-1/frame_004.png","./assets/players/team-1/frame_005.png","./assets/players/team-1/frame_006.png","./assets/players/team-1/frame_007.png","./assets/players/team-1/frame_008.png","./assets/players/team-1/frame_009.png","./assets/players/team-1/frame_010.png","./assets/players/team-1/frame_011.png","./assets/players/team-1/frame_012.png","./assets/players/team-1/frame_013.png","./assets/players/team-1/frame_014.png","./assets/players/team-1/frame_015.png","./assets/players/team-1/frame_016.png","./assets/players/team-1/frame_017.png","./assets/players/team-1/frame_018.png","./assets/players/team-1/frame_019.png","./assets/players/team-1/frame_020.png","./assets/players/team-1/frame_021.png","./assets/players/team-1/frame_022.png","./assets/players/team-1/frame_023.png","./assets/players/team-1/frame_024.png","./assets/players/team-1/frame_025.png","./assets/players/team-1/frame_026.png","./assets/players/team-1/frame_027.png","./assets/players/team-1/frame_028.png","./assets/players/team-1/frame_029.png","./assets/players/team-1/frame_030.png","./assets/players/team-1/frame_031.png","./assets/players/team-1/frame_032.png"
-      ],
-      "animations": {
-        "idle": [1,2,3,4],
-        "down": [5,6,7,8],
-        "right": [9,10,11,12,13,14,15,16],
-        "up": [17,18,19,20,21,22,23,24],
-        "left": [25,26,27,28],
-        "kick": [29,30],
-        "slide": [31,32]
-      }
-    },
-    "team-2": { "src": "", "frames": [] },
-    "team-3": { "src": "", "frames": [] },
-    "team-4": { "src": "", "frames": [] },
-    "team-5": { "src": "", "frames": [] },
-    "team-6": { "src": "", "frames": [] }
+    "team-1": {"base":"./assets/players/team-1","frameCount":32,"pattern":"frame_{001..032}.png"},
+    "team-2": {"base":"./assets/players/team-2","frameCount":32,"pattern":"frame_{001..032}.png"},
+    "team-3": {"base":"./assets/players/team-3","frameCount":0},
+    "team-4": {"base":"./assets/players/team-4","frameCount":0},
+    "team-5": {"base":"./assets/players/team-5","frameCount":0},
+    "team-6": {"base":"./assets/players/team-6","frameCount":0}
   },
-  "ball": { "src": "", "frames": [] },
-  "goal": { "src": "", "leftSrc": "", "rightSrc": "" }
+  "animations": {"idle":[1,2,3,4],"down":[5,6,7,8],"right":[9,10,11,12,13,14,15,16],"up":[17,18,19,20,21,22,23,24],"left":[25,26,27,28],"kick":[29,30],"slide":[31,32]},
+  "ball": {"base":"./assets/ball","frameCount":0},
+  "goals": {"base":"./assets/goals","left":"","right":""},
+  "maps": {"base":"./assets/maps","active":"default"}
 }
