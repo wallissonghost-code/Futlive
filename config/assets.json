@@ -1,6 +1,6 @@
 {
-  "version": "0.23",
-  "map": {"active":"default","src":""},
+  "version": "0.25",
+  "map": {"active":"default","src":"./assets/maps/16F9F5B2-A968-4629-A9C0-6ABF47EB5B94.jpeg"},
   "players": {
     "team-1": {"base":"./assets/players/team-1","frameCount":32,"pattern":"frame_{001..032}.png"},
     "team-2": {"base":"./assets/players/team-2","frameCount":32,"pattern":"frame_{001..032}.png"},
@@ -11,6 +11,6 @@
   },
   "animations": {"idle":[1,2,3,4],"down":[5,6,7,8],"right":[9,10,11,12,13,14,15,16],"up":[17,18,19,20,21,22,23,24],"left":[25,26,27,28],"kick":[29,30],"slide":[31,32]},
   "ball": {"base":"./assets/ball","frameCount":0},
-  "goals": {"base":"./assets/goals","left":"","right":""},
+  "goals": {"base":"./assets/goals","left":"./assets/goals/frame_001.png","right":"./assets/goals/frame_003.png"},
   "maps": {"base":"./assets/maps","active":"default"}
 }
