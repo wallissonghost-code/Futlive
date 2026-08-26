@@ -1,8 +1,8 @@
 window.FutLiveConfig=Object.freeze({
-  version:'0.30',
+  version:'0.31',
   players:{
-    team1:{ids:['player1','player2','player3'],base:'./assets/players/team-1',frames:32,fps:8,team:'1'},
-    team2:{ids:['player4','player5','player6'],base:'./assets/players/team-2',frames:32,fps:8,team:'2'}
+    team1:{ids:['player1','player2','player3','player4','player5'],base:'./assets/players/team-1',frames:32,fps:8,team:'1'},
+    team2:{ids:['player6','player7','player8','player9','player10'],base:'./assets/players/team-2',frames:32,fps:8,team:'2'}
   },
   field:{
     mode:'camera-follow-16x9',
