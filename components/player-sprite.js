@@ -1,5 +1,5 @@
 (()=>{'use strict';
-const COMPONENT_VERSION='0.17';
+const COMPONENT_VERSION='0.18';
 class FutLivePlayerSprite{
   constructor({element,base='./assets/players/team-1',frameCount=32,fps=8,team='1'}={}){
     this.el=typeof element==='string'?document.querySelector(element):element;
@@ -29,14 +29,11 @@ class FutLivePlayerSprite{
 }
 function mountTeams(){
   window.FutLivePlayers=window.FutLivePlayers||{};
-  const slots=[
-    ['player1','.p1','1'],['player2','.p2','1'],['player3','.p3','1'],
-    ['player4','.p4','2'],['player5','.p5','2'],['player6','.p6','2']
-  ];
-  for(const [key,selector,team] of slots){
-    const el=document.querySelector(selector);if(!el||el.classList.contains('sprite-player'))continue;
-    window.FutLivePlayers[key]=new FutLivePlayerSprite({element:el,base:`./assets/players/team-${team}`,frameCount:32,fps:8,team}).idle();
-  }
+  const slots=[['player1','.p1','1'],['player2','.p2','1'],['player3','.p3','1'],['player4','.p4','2'],['player5','.p5','2'],['player6','.p6','2']];
+  for(const [key,selector,team] of slots){const el=document.querySelector(selector);if(!el||el.classList.contains('sprite-player'))continue;window.FutLivePlayers[key]=new FutLivePlayerSprite({element:el,base:`./assets/players/team-${team}`,frameCount:32,fps:8,team}).idle();}
+  const team1=['player1','player2','player3'].map(k=>window.FutLivePlayers[k]).filter(Boolean),team2=['player4','player5','player6'].map(k=>window.FutLivePlayers[k]).filter(Boolean);
+  window.FutLivePlayers.team1=team1;window.FutLivePlayers.team2=team2;window.FutLivePlayers.all=[...team1,...team2];
+  if(!document.querySelector('script[data-futlive-engine]')){const s=document.createElement('script');s.src='./components/game-engine.js?v='+COMPONENT_VERSION;s.dataset.futliveEngine='1';document.body.appendChild(s)}
 }
 window.FutLivePlayerSprite=FutLivePlayerSprite;
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mountTeams,{once:true});else setTimeout(mountTeams,0);
