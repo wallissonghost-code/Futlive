@@ -32,7 +32,7 @@ class FutLiveFootballEngine{
   opponents(team){return this.players.filter(p=>p.team!==team)}
   mates(team,exclude=null){return this.players.filter(p=>p.team===team&&p!==exclude)}
   freeBallAI(dt,f){const b=this.nearest('blue',this.ball),r=this.nearest('red',this.ball),now=performance.now();
-    for(const n of [b,r])if(n.p){const p=n.p,hesitate=now<p.nextThink?.75:1;if(hesitate===1){p.role='chase';this.moveToward(p,this.ball.x+this.ball.vx*.12,this.ball.y+this.ball.vy*.10,p.speed*1.12,dt)}}
+    for(const n of [b,r])if(n.p&&now>=n.p.nextThink){const p=n.p;p.role='chase';this.moveToward(p,this.ball.x+this.ball.vx*.12,this.ball.y+this.ball.vy*.10,p.speed*1.12,dt)}
     const chase=[b.p,r.p].filter(Boolean);for(const p of this.players){if(chase.includes(p))continue;const home=this.formation[p.team][p.slot],attack=p.team==='blue'?1:-1,predictX=this.ball.x+this.ball.vx*.16,predictY=this.ball.y+this.ball.vy*.13;
       const wander=Math.sin((performance.now()/700)+(p.slot*2)+(p.team==='red'?1:0))*18;const tx=f.w*home[0]+(predictX-f.w*.5)*.13+attack*(p.slot-1)*10,ty=f.h*home[1]+(predictY-f.h*.5)*.08+wander;p.role='support';this.moveToward(p,tx,ty,p.speed*.60,dt)}
     if(now>=this.ball.pickupLock){const candidates=[b,r].filter(n=>n.p&&n.d<23).sort((a,z)=>a.d-z.d);for(const n of candidates){const controlChance=n.p.skill.control*(n.d<15?.94:.72);if(Math.random()<controlChance){this.takePossession(n.p,'recovery');break}}}}
