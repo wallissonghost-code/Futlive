@@ -1,5 +1,5 @@
 window.FutLiveConfig=Object.freeze({
-  version:'0.45',
+  version:'0.46',
   players:{
     team1:{ids:['player1','player2','player3','player4','player5'],base:'./assets/players/team-1',frames:32,fps:8,team:'1'},
     team2:{ids:['player6','player7','player8','player9','player10'],base:'./assets/players/team-2',frames:32,fps:8,team:'2'}
@@ -11,8 +11,7 @@ window.FutLiveConfig=Object.freeze({
     ball:{base:'./assets/ball',frames:12,visualSize:20},
     referee:{
       base:'./assets/referee',
-      desktop:{width:46,height:52,scale:1.35,offsetX:-16,offsetY:-23,footAnchor:[.5,.86]},
-      mobile:{width:44,height:50,scale:1.38,offsetX:-15,offsetY:-22,footAnchor:[.5,.86]},
+      normalization:{sourceFrames:28,anchor:'alpha-bbox-bottom',targetVisibleHeight:{desktop:69.5,mobile:68.3}},
       follow:{behind:78,lateral:66,smoothingMs:280},
       avoidance:{radius:27,maxLateral:7.5},
       ballHitbox:{offsetY:-10,rx:7,ry:11}
