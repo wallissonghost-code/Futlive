@@ -1,5 +1,5 @@
 window.FutLiveConfig=Object.freeze({
-  version:'0.28',
+  version:'0.29',
   players:{
     team1:{ids:['player1','player2','player3'],base:'./assets/players/team-1',frames:32,fps:8,team:'1'},
     team2:{ids:['player4','player5','player6'],base:'./assets/players/team-2',frames:32,fps:8,team:'2'}
@@ -8,7 +8,7 @@ window.FutLiveConfig=Object.freeze({
     mode:'landscape-16x9',
     viewportWidthPercent:90,
     map:'./assets/maps/BDA9D67F-DDF2-4429-BF0A-84EC5AE497E8.png',
-    goals:{left:'./assets/goals/frame_001.png',right:'./assets/goals/frame_003.png'}
+    goals:{enabled:false,left:'./assets/goals/frame_001.png',right:'./assets/goals/frame_003.png'}
   },
   gifts:{
     blue:[
