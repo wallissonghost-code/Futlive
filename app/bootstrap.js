@@ -10,7 +10,8 @@ function buildTeam(teamCfg){
   return teamCfg.ids.map(id=>new FutLivePlayerSprite({element:'#'+id,base:teamCfg.base,frameCount:teamCfg.frames,fps:teamCfg.fps,team:teamCfg.team}).idle());
 }
 const team1=buildTeam(cfg.players.team1),team2=buildTeam(cfg.players.team2),players=[...team1,...team2];
-window.FutLivePlayers={player1:team1[0],player2:team1[1],player3:team1[2],player4:team2[0],player5:team2[1],player6:team2[2],team1,team2,all:players};
+const byId={};cfg.players.team1.ids.forEach((id,i)=>byId[id]=team1[i]);cfg.players.team2.ids.forEach((id,i)=>byId[id]=team2[i]);
+window.FutLivePlayers={...byId,team1,team2,all:players};
 
 function syncVersion(){const v=document.querySelector('.version');if(v)v.textContent='BETA '+cfg.version}
 syncVersion();setTimeout(syncVersion,300);
