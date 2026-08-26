@@ -1,0 +1,34 @@
+/* LIVE GIFT HUD COMPONENT v1
+   Reutilizável em Futlive, Game/Caos Live e outros jogos.
+   Posição padrão: rodapé. Sobrescreva .live-gift-hud{top:...;bottom:auto} para usar no topo.
+*/
+.live-gift-hud{position:absolute;z-index:20;left:0;right:0;bottom:0;pointer-events:none}
+.live-gift-hud .hud-title{display:flex;justify-content:center;align-items:center;gap:7px;margin:0 0 5px;font-size:8px;font-weight:950;letter-spacing:.18em;text-shadow:0 2px 8px #000}
+.live-gift-hud .hud-title small{font-size:6px;color:#d3dae3;letter-spacing:.12em}
+.live-gift-hud .sides{display:grid;grid-template-columns:1fr 1fr;gap:0;width:100%}
+.live-gift-hud .side{position:relative;overflow:hidden;padding:7px;background:linear-gradient(180deg,#0f1620e0,#05090ff5);border-top:1px solid #ffffff21;backdrop-filter:blur(13px);box-shadow:0 -12px 30px #0005,inset 0 1px 0 #ffffff0d}
+.live-gift-hud .side.blue{border-right:1px solid #ffffff12}
+.live-gift-hud .side:before{content:"";position:absolute;inset:0;opacity:.18;pointer-events:none}
+.live-gift-hud .side.blue:before{background:radial-gradient(circle at 0 0,#2e82ff,transparent 58%)}
+.live-gift-hud .side.red:before{background:radial-gradient(circle at 100% 0,#ff4154,transparent 58%)}
+.live-gift-hud .side-head{position:relative;display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:6px;font-size:8px;font-weight:950;letter-spacing:.12em}
+.live-gift-hud .dot{width:7px;height:7px;border-radius:50%}
+.live-gift-hud .blue .dot{background:#2d82ff}.live-gift-hud .red .dot{background:#ff3d50}
+.live-gift-hud .rules{position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.live-gift-hud .rule{position:relative;min-width:0;height:54px;display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:11px;background:linear-gradient(180deg,#070c14f5,#04080df5);border:1px solid #ffffff17;box-shadow:inset 0 1px 0 #ffffff0d;overflow:hidden}
+.live-gift-hud .rule.sync-live{box-shadow:inset 0 1px 0 #ffffff0d,0 0 0 1px #ffffff08}
+.live-gift-hud .gift{width:32px;height:32px;flex:0 0 32px;display:grid;place-items:center;font-size:24px;object-fit:contain;filter:drop-shadow(0 5px 8px #000c)}
+.live-gift-hud img.gift{display:block}
+.live-gift-hud .copy{min-width:0;flex:1;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.live-gift-hud .copy b{font-size:8px;line-height:1.12;font-weight:950;white-space:normal;max-height:18px;overflow:hidden}
+.live-gift-hud .blue .copy b{color:#bfd7ff}.live-gift-hud .red .copy b{color:#ffc1c8}
+.live-gift-hud .copy small{font-size:5.8px;line-height:1.05;color:#8793a2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.live-gift-hud .lock{position:absolute;right:4px;top:3px;font-size:6px;opacity:.5}
+.live-gift-hud .comment{position:relative;margin-top:6px;display:grid;grid-template-columns:72px minmax(0,1fr);align-items:center;gap:6px;height:42px;padding:6px 7px;border-radius:10px;background:#04080ed9;border:1px solid #ffffff17}
+.live-gift-hud .comment span{font-size:6px;color:#8894a3;font-weight:900;letter-spacing:.1em;white-space:nowrap}
+.live-gift-hud .comment b{display:flex;align-items:center;justify-content:center;width:100%;height:28px;padding:0 6px;border-radius:999px;background:#060b12;border:1px solid #ffffff1a;font-size:clamp(6px,1.9vw,8px);font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.live-gift-hud .blue .comment b{color:#bcd6ff;border-color:#448bff47}.live-gift-hud .red .comment b{color:#ffb9c1;border-color:#ff4d6047}
+.live-gift-hud .status{position:absolute;right:max(8px,env(safe-area-inset-right));top:-23px;padding:4px 7px;border-radius:999px;background:#04080dc7;border:1px solid #ffffff1f;font-size:6px;color:#95a2b1;font-weight:900;letter-spacing:.08em}
+.live-gift-hud .status.on{color:#84e6a2}
+@media(max-width:390px){.live-gift-hud .side{padding:6px}.live-gift-hud .rule{height:52px;gap:5px;padding:4px 5px}.live-gift-hud .gift{width:29px;height:29px;flex-basis:29px;font-size:21px}.live-gift-hud .copy b{font-size:7.4px}.live-gift-hud .copy small{font-size:5.3px}.live-gift-hud .comment{grid-template-columns:64px minmax(0,1fr);height:40px;padding:5px 6px}.live-gift-hud .comment b{height:26px;font-size:6.4px}.live-gift-hud .hud-title small{display:none}}
+@media(orientation:landscape){.live-gift-hud .rules{grid-template-columns:repeat(3,minmax(0,1fr))}.live-gift-hud .rule{height:44px}.live-gift-hud .gift{width:27px;height:27px;flex-basis:27px;font-size:20px}.live-gift-hud .comment{display:none}.live-gift-hud .side{padding-bottom:5px}}
