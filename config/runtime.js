@@ -1,5 +1,5 @@
 window.FutLiveConfig=Object.freeze({
-  version:'0.32',
+  version:'0.33',
   players:{
     team1:{ids:['player1','player2','player3','player4','player5'],base:'./assets/players/team-1',frames:32,fps:8,team:'1'},
     team2:{ids:['player6','player7','player8','player9','player10'],base:'./assets/players/team-2',frames:32,fps:8,team:'2'}
