@@ -7,7 +7,7 @@ function boot(){
   const el=document.createElement('div');el.className='referee-agent';stage.appendChild(el);const sprite=new window.FutLiveRefereeSprite(el);
   const notice=document.createElement('div');notice.className='referee-notice';document.body.appendChild(notice);
   const style=document.createElement('style');style.textContent=`.referee-notice{position:fixed;z-index:110;left:50%;top:29%;transform:translate(-50%,-50%) scale(.85);opacity:0;pointer-events:none;padding:9px 15px;border-radius:999px;background:#071019e8;border:1px solid #ffffff2d;color:#fff;font-size:12px;font-weight:1000;letter-spacing:.08em;transition:.16s}.referee-notice.show{opacity:1;transform:translate(-50%,-50%) scale(1)}`;document.head.appendChild(style);
-  const ref={state:STATES.FOLLOWING,x:e.field().w*.5,y:e.field().h*.62,target:null,busy:false,discipline:new Map(),STATES,sprite,ballContactAt:0};
+  const ref={state:STATES.FOLLOWING,x:e.field().w*.5,y:e.field().h*.62,target:null,busy:false,discipline:new Map(),STATES,sprite,ballContactAt:0,followX:null,followY:null,followSide:1,lastSideChange:0};
   function setState(s){ref.state=s;el.dataset.state=s;if(s===STATES.YELLOW_CARD)sprite.playCard('yellow');else if(s===STATES.RED_CARD)sprite.playCard('red')}
   function record(p){let r=ref.discipline.get(p);if(!r){r={yellowCards:0,redCard:false,fouls:0};ref.discipline.set(p,r);p.yellowCards=0;p.redCard=false;p.fouls=0}return r}
   e.players.forEach(record);
@@ -26,8 +26,16 @@ function boot(){
   function onFoul(ev){const d=ev.detail;if(!d||ref.busy||window.FutLiveMatchState?.phase!=='PLAYING')return;ref.busy=true;ref.target={x:d.x,y:d.y};window.FutLiveMatchFlow?.setPhase('FOUL_STOPPAGE');if(!game.classList.contains('is-paused'))pauseBtn.click();setState(STATES.WHISTLE);show('📣 FALTA',650);setTimeout(()=>{setState(STATES.APPROACHING);const card=decideCard(d);setTimeout(()=>{if(card==='YELLOW'){setState(STATES.YELLOW_CARD);show('🟨 CARTÃO AMARELO',1100)}else if(card==='RED'){setState(STATES.RED_CARD);show('🟥 CARTÃO VERMELHO',1300)}else{setState(STATES.WARNING);show('⚠️ FALTA',800)}setTimeout(()=>resumeFromFoul(d),card==='RED'?1250:card==='YELLOW'?1050:720)},620)},300)}
   window.addEventListener('futlive:foul',onFoul);
   function ballContact(){const b=e.ball,phase=window.FutLiveMatchState?.phase;if(b.owner||b.type==='foul-dead'||!['PLAYING','KICKOFF'].includes(phase)||performance.now()-ref.ballContactAt<260)return;const speed=Math.hypot(b.vx||0,b.vy||0);if(speed<28)return;const hb=sprite.getBallHitbox(ref.x,ref.y),dx=b.x-hb.x,dy=b.y-hb.y,n=(dx*dx)/(hb.rx*hb.rx)+(dy*dy)/(hb.ry*hb.ry);if(n>1)return;const mag=Math.hypot(dx,dy)||1,nx=dx/mag,ny=dy/mag,dot=b.vx*nx+b.vy*ny;let vx=b.vx-1.45*dot*nx,vy=b.vy-1.45*dot*ny;vx=vx*.78+nx*18;vy=vy*.78+ny*18;b.vx=vx;b.vy=vy;b.x+=nx*4;b.y+=ny*4;ref.ballContactAt=performance.now();window.dispatchEvent(new CustomEvent('futlive:referee-ball-contact',{detail:{x:b.x,y:b.y,beforeSpeed:speed,afterSpeed:Math.hypot(vx,vy),ballType:b.type,referee:{x:ref.x,y:ref.y}}}))}
-  let last=performance.now();function loop(t){const dt=Math.min(.04,(t-last)/1000||.016);last=t;const f=e.field();let tx,ty;if(ref.target&&ref.state!==STATES.FOLLOWING){tx=ref.target.x;ty=ref.target.y}else{const b=e.ball;tx=clamp(b.x+(b.x<f.w*.5?55:-55),f.left+40,f.right-40);ty=clamp(b.y+(b.y<f.h*.5?55:-55),f.top+35,f.bottom-45)}const dx=tx-ref.x,dy=ty-ref.y,m=Math.hypot(dx,dy);let moveX=0,moveY=0,speed=0;if(m>2){const step=Math.min(m,92*dt),ux=dx/m,uy=dy/m;moveX=ux*step;moveY=uy*step;ref.x+=moveX;ref.y+=moveY;speed=dt>0?step/dt:0}el.style.left=ref.x+'px';el.style.top=ref.y+'px';sprite.updateMotion(moveX,moveY,speed,t);ballContact();requestAnimationFrame(loop)}requestAnimationFrame(loop);
-  ref.moveNearCenter=()=>{const f=e.field();ref.target={x:f.w*.5,y:f.h*.58};setState(STATES.APPROACHING)};ref.releaseFollow=()=>{ref.target=null;setState(STATES.FOLLOWING)};ref.getRecord=p=>record(p);window.FutLiveReferee=ref;
+  function followTarget(f,b,dt,t){
+    const center=(f.left+f.right)/2,margin=f.w*.09;
+    if(t-ref.lastSideChange>650){if(ref.followSide===1&&b.x>center+margin){ref.followSide=-1;ref.lastSideChange=t}else if(ref.followSide===-1&&b.x<center-margin){ref.followSide=1;ref.lastSideChange=t}}
+    const desiredX=clamp(b.x+ref.followSide*52,f.left+40,f.right-40),desiredY=clamp(b.y+(b.y<f.h*.5?50:-50),f.top+35,f.bottom-45);
+    if(ref.followX==null||ref.followY==null){ref.followX=desiredX;ref.followY=desiredY}
+    const alpha=1-Math.exp(-Math.max(.001,dt)/.22);ref.followX+=(desiredX-ref.followX)*alpha;ref.followY+=(desiredY-ref.followY)*alpha;
+    return{x:ref.followX,y:ref.followY}
+  }
+  let last=performance.now();function loop(t){const dt=Math.min(.04,(t-last)/1000||.016);last=t;const f=e.field();let tx,ty;if(ref.target&&ref.state!==STATES.FOLLOWING){tx=ref.target.x;ty=ref.target.y}else{const q=followTarget(f,e.ball,dt,t);tx=q.x;ty=q.y}const dx=tx-ref.x,dy=ty-ref.y,m=Math.hypot(dx,dy);let moveX=0,moveY=0,speed=0;if(m>2){const step=Math.min(m,92*dt),ux=dx/m,uy=dy/m;moveX=ux*step;moveY=uy*step;ref.x+=moveX;ref.y+=moveY;speed=dt>0?step/dt:0}el.style.left=ref.x+'px';el.style.top=ref.y+'px';sprite.updateMotion(moveX,moveY,speed,t);ballContact();requestAnimationFrame(loop)}requestAnimationFrame(loop);
+  ref.moveNearCenter=()=>{const f=e.field();ref.target={x:f.w*.5,y:f.h*.58};setState(STATES.APPROACHING)};ref.releaseFollow=()=>{ref.target=null;ref.followX=ref.x;ref.followY=ref.y;setState(STATES.FOLLOWING)};ref.getRecord=p=>record(p);window.FutLiveReferee=ref;
 }
 boot();
 })();
