@@ -1,10 +1,11 @@
 window.FutLiveConfig=Object.freeze({
-  version:'0.25',
+  version:'0.26',
   players:{
     team1:{ids:['player1','player2','player3'],base:'./assets/players/team-1',frames:32,fps:8,team:'1'},
     team2:{ids:['player4','player5','player6'],base:'./assets/players/team-2',frames:32,fps:8,team:'2'}
   },
   field:{
+    mode:'css-safe',
     map:'./assets/maps/16F9F5B2-A968-4629-A9C0-6ABF47EB5B94.jpeg',
     goals:{left:'./assets/goals/frame_001.png',right:'./assets/goals/frame_003.png'}
   },
