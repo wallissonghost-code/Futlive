@@ -1,10 +1,9 @@
 (()=>{'use strict';
 const CFG=Object.freeze({
   base:'./assets/referee',
-  // Os PNGs do árbitro ocupam mais área útil do canvas que os sprites dos jogadores.
-  // Estes valores compensam essa diferença para igualar a altura VISÍVEL em campo.
-  desktop:{width:58,height:66,scale:1.52,offsetX:-20,offsetY:-29,footAnchor:{x:.50,y:.84}},
-  mobile:{width:55,height:62,scale:1.56,offsetX:-19,offsetY:-27,footAnchor:{x:.50,y:.84}},
+  // BETA 0.45: escala independente calibrada pela altura VISÍVEL dos sprites do árbitro.
+  desktop:{width:46,height:52,scale:1.35,offsetX:-16,offsetY:-23,footAnchor:{x:.50,y:.86}},
+  mobile:{width:44,height:50,scale:1.38,offsetX:-15,offsetY:-22,footAnchor:{x:.50,y:.86}},
   mobileMaxWidth:390,
   idleSpeed:9,
   minWalkFps:4.6,
@@ -18,7 +17,8 @@ const CFG=Object.freeze({
   motionDeadZone:.12,
   cardStepMs:260,
   cardHoldMs:620,
-  hitbox:{offsetX:0,offsetY:-13,rx:9,ry:14}
+  hitbox:{offsetX:0,offsetY:-10,rx:7,ry:11},
+  avoidance:{radius:27,bodyRadius:9,maxLateral:7.5}
 });
 const MAP=Object.freeze({
   idle_down:['idle_down_01.png','idle_down_02.png','idle_down_03.png','idle_down_04.png'],
@@ -41,7 +41,7 @@ class FutLiveRefereeSprite{
   installStyle(){
     if(document.getElementById('refereeSpriteStyle'))return;
     const d=CFG.desktop,m=CFG.mobile,s=document.createElement('style');s.id='refereeSpriteStyle';
-    s.textContent=`.referee-agent{position:absolute;z-index:5;width:${d.width}px;height:${d.height}px;transform:translate(${d.offsetX}px,${d.offsetY}px);pointer-events:none;overflow:visible}.referee-sprite-img{display:block;width:100%;height:100%;object-fit:contain;object-position:50% 100%;transform:scale(${d.scale});transform-origin:${d.footAnchor.x*100}% ${d.footAnchor.y*100}%;filter:drop-shadow(0 4px 5px #0008);pointer-events:none}@media(max-width:${CFG.mobileMaxWidth}px){.referee-agent{width:${m.width}px;height:${m.height}px;transform:translate(${m.offsetX}px,${m.offsetY}px)}.referee-sprite-img{transform:scale(${m.scale});transform-origin:${m.footAnchor.x*100}% ${m.footAnchor.y*100}%}}`;
+    s.textContent=`.referee-agent{position:absolute;z-index:5;width:${d.width}px;height:${d.height}px;transform:translate(${d.offsetX}px,${d.offsetY}px);pointer-events:none;overflow:visible}.referee-sprite-img{display:block;width:100%;height:100%;object-fit:contain;object-position:50% 100%;transform:scale(${d.scale});transform-origin:${d.footAnchor.x*100}% ${d.footAnchor.y*100}%;filter:drop-shadow(0 3px 4px #0008);pointer-events:none}@media(max-width:${CFG.mobileMaxWidth}px){.referee-agent{width:${m.width}px;height:${m.height}px;transform:translate(${m.offsetX}px,${m.offsetY}px)}.referee-sprite-img{transform:scale(${m.scale});transform-origin:${m.footAnchor.x*100}% ${m.footAnchor.y*100}%}}`;
     document.head.appendChild(s)
   }
   preload(){for(const [anim,files] of Object.entries(MAP))for(const f of files){const src=url(f),i=new Image();i.onload=()=>this.available.set(src,true);i.onerror=()=>{this.available.set(src,false);console.warn('[Futlive][RefereeSprite] frame ausente:',src,'animação:',anim)};i.src=src}}
@@ -55,7 +55,6 @@ class FutLiveRefereeSprite{
   chooseDirection(rawDX,rawDY,speed,t){
     const [dx,dy]=this.smoothVector(rawDX,rawDY,t),ax=Math.abs(dx),ay=Math.abs(dy);if(Math.hypot(dx,dy)<CFG.motionDeadZone)return this.direction;
     const currentHorizontal=this.direction==='left'||this.direction==='right';
-    // Inversão clara no mesmo eixo pode ser imediata; microzigue-zague não.
     if(currentHorizontal&&Math.sign(rawDX)!==0&&((this.direction==='right'&&rawDX<0)||(this.direction==='left'&&rawDX>0))&&Math.abs(rawDX)>Math.abs(rawDY)*CFG.inversionRatio&&speed>=CFG.inversionMinSpeed){this.direction=rawDX>0?'right':'left';this.lastDirectionAt=t;this.pendingDirection=null;return this.direction}
     if(!currentHorizontal&&Math.sign(rawDY)!==0&&((this.direction==='down'&&rawDY<0)||(this.direction==='up'&&rawDY>0))&&Math.abs(rawDY)>Math.abs(rawDX)*CFG.inversionRatio&&speed>=CFG.inversionMinSpeed){this.direction=rawDY>0?'down':'up';this.lastDirectionAt=t;this.pendingDirection=null;return this.direction}
     let next=this.direction;
@@ -78,6 +77,7 @@ class FutLiveRefereeSprite{
   playCard(kind){this.cardAnim=kind==='red'?'card_red':'card_yellow';this.cardBusy=true;this.moving=false;this.pendingDirection=null;this.cardStartedAt=performance.now();this.show(this.cardAnim,0)}
   updateCard(t){if(!this.cardBusy)return;const files=this.safeFiles(this.cardAnim),elapsed=t-this.cardStartedAt;if(files.length>1&&elapsed>=CFG.cardStepMs&&this.index!==files.length-1)this.show(this.cardAnim,files.length-1);if(elapsed>=CFG.cardStepMs+CFG.cardHoldMs){this.cardBusy=false;this.cardAnim=null;this.smoothDX=this.smoothDY=0;this.lastMotionAt=t;this.showIdle(this.direction)}}
   getBallHitbox(x,y){return{x:x+CFG.hitbox.offsetX,y:y+CFG.hitbox.offsetY,rx:CFG.hitbox.rx,ry:CFG.hitbox.ry}}
+  getAvoidanceConfig(){return CFG.avoidance}
   destroy(){this.cardBusy=false;this.el.innerHTML=''}
 }
 window.FutLiveRefereeSprite=FutLiveRefereeSprite;window.FutLiveRefereeSpriteConfig={CFG,MAP};
