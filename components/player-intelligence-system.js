@@ -1,11 +1,11 @@
 (()=>{'use strict';
-const VERSION='0.55';
+const VERSION='0.55.1';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const other=t=>t==='blue'?'red':'blue';
 function boot(){
   const e=window.FutLiveFootballEngine,tactics=window.FutLiveFootballTactics,base=window.FutLiveFootballAI;
   if(!e||!tactics||!base||!e.players?.length){setTimeout(boot,40);return}
-  if(e.__playerIntelligenceV055)return;e.__playerIntelligenceV055=true;
+  if(e.__playerIntelligenceV0551)return;e.__playerIntelligenceV0551=true;
 
   const old={choosePassTarget:e.choosePassTarget.bind(e),pass:e.pass.bind(e),takePossession:e.takePossession.bind(e),shoot:e.shoot.bind(e),ownedAI:e.ownedAI.bind(e),moveToward:e.moveToward.bind(e)};
   const memory=new Map();
@@ -37,6 +37,9 @@ function boot(){
   function peripheralScore(p,q){const [fx,fy]=facingVector(p),dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy)||1,dot=(fx*dx+fy*dy)/d,prof=profile(p);return dot>=-.15?1:prof.peripheral*(dot>-.65?.74:.42)}
   function pressureAround(p,r=58){return fielders(other(p.team)).filter(o=>e.dist(p,o)<r).sort((a,b)=>e.dist(p,a)-e.dist(p,b))}
   function laneSafety(c,t){const opps=fielders(other(c.team)),dx=t.x-c.x,dy=t.y-c.y,len2=dx*dx+dy*dy||1;let min=999;for(const o of opps){const u=clamp(((o.x-c.x)*dx+(o.y-c.y)*dy)/len2,0,1),px=c.x+dx*u,py=c.y+dy*u;min=Math.min(min,Math.hypot(o.x-px,o.y-py))}return min}
+  function dirTo(c,t){const dx=t.x-c.x,dy=t.y-c.y;return Math.abs(dx)>=Math.abs(dy)*1.08?(dx>=0?'right':'left'):(dy>=0?'down':'up')}
+  function orientForAction(c,t){const dir=dirTo(c,t);c.facing=dir;c.lastDir=dir;if(c.aiVelocity){c.aiVelocity.x*=.35;c.aiVelocity.y*=.35}c.ctrl?.cancelPendingDirection?.();if(c.ctrl?.play)c.ctrl.play(dir,c.ctrl.fps||8,{restart:false});else c.ctrl?.move?.(dir);return dir}
+  function targetDot(c,t){const [fx,fy]=facingVector(c),dx=t.x-c.x,dy=t.y-c.y,d=Math.hypot(dx,dy)||1;return(fx*dx+fy*dy)/d}
 
   function scoreTarget(c,p){
     const f=e.field(),a=attack(c.team),prof=profile(c),forward=(p.x-c.x)*a,dist=e.dist(c,p),space=Math.min(...fielders(other(c.team)).map(o=>e.dist(p,o)),120),lane=laneSafety(c,p),vision=peripheralScore(c,p),goalGain=Math.abs(goalX(c.team,f)-c.x)-Math.abs(goalX(c.team,f)-p.x);let score=space*.55+lane*.54+forward*.20+goalGain*.18-dist*.055+vision*24;
@@ -47,7 +50,7 @@ function boot(){
   e.choosePassTarget=(c)=>{if(!c)return null;const cands=fielders(c.team).filter(p=>p!==c&&!tactics.offside(p,c.x));let best=null,score=-1e9;for(const p of cands){const s=scoreTarget(c,p);if(s>score){score=s;best=p}}return score>10?best:old.choosePassTarget(c)};
 
   function launchPass(c,t,{kind='normal',lead=0,powerMul=1}={}){
-    if(!c||!t)return false;const a=attack(c.team),start=e.foot(c),prof=profile(c),tx=t.x+a*lead,ty=t.y+27,dx=tx-start.x,dy=ty-start.y,d=Math.hypot(dx,dy)||1;
+    if(!c||!t)return false;orientForAction(c,t);const a=attack(c.team),start=e.foot(c),prof=profile(c),tx=t.x+a*lead,ty=t.y+27,dx=tx-start.x,dy=ty-start.y,d=Math.hypot(dx,dy)||1;
     const precision=clamp(c.skill.pass*.72+c.skill.vision*.28,.4,.95),err=(1-precision)*(kind==='through'?32:kind==='cross'?42:18),targetY=ty+(Math.random()-.5)*err,targetX=tx+(Math.random()-.5)*err*.55,ddx=targetX-start.x,ddy=targetY-start.y,dd=Math.hypot(ddx,ddy)||1;
     let speed=Math.min(kind==='cross'?300:kind==='through'?270:235,(145+d*.28)*powerMul);
     e.ball.owner=null;e.ball.type=kind==='through'?'through-pass':kind==='cross'?'cross-pass':kind==='one-touch'?'one-touch-pass':'pass';e.ball.intended=t;e.ball.lastTouch=c;e.ball.pickupLock=now()+(kind==='one-touch'?95:125);e.ball.x=start.x+a*7;e.ball.y=start.y;e.ball.vx=ddx/dd*speed;e.ball.vy=ddy/dd*speed;e.ball.curve=kind==='cross'?(Math.random()<.5?-1:1)*.12*prof.cross:0;e.actionLock=now()+(kind==='one-touch'?300:420);remember(c,'PASS',{to:t,kind});e.game.dataset.lastAction=e.ball.type;return true
@@ -61,7 +64,8 @@ function boot(){
 
   function maybeOneTouch(c){
     if(!c||c.goalkeeper||!c.receivedAt)return false;const age=now()-c.receivedAt,prof=profile(c);if(age>360||prof.oneTouch<.43)return false;const press=pressureAround(c,54),target=e.choosePassTarget(c);if(!target)return false;
-    const lane=laneSafety(c,target),chance=prof.oneTouch+(press.length?.18:0)+(lane>32?.08:0);if(Math.random()<clamp(chance-.35,.10,.72)){c.receivedAt=0;launchPass(c,target,{kind:'one-touch',lead:target.personality==='finisher'?20:8,powerMul:1.02});return true}return false
+    const dot=targetDot(c,target);if(dot<-.08)return false;
+    const lane=laneSafety(c,target),chance=prof.oneTouch+(press.length?.18:0)+(lane>32?.08:0);if(Math.random()<clamp(chance-.35,.10,.72)){c.receivedAt=0;orientForAction(c,target);launchPass(c,target,{kind:'one-touch',lead:target.personality==='finisher'?20:8,powerMul:1.02});return true}return false
   }
 
   function dribbleDirection(c){
