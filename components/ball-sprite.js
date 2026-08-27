@@ -1,7 +1,7 @@
 (()=>{'use strict';
 const FRAME_COUNT=12,BASE='./assets/ball',VISUAL_SIZE=17;
 function frameSrc(i){return `${BASE}/frame_${String(i).padStart(3,'0')}.png`}
-function loadAerial(){if(window.FutLiveAerialBall||document.querySelector('script[data-futlive-aerial]'))return;const s=document.createElement('script');s.src='./components/aerial-ball-system.js?v=0.61.3';s.dataset.futliveAerial='1';document.head.appendChild(s)}
+function loadAerial(){if(window.FutLiveAerialBall||document.querySelector('script[data-futlive-aerial]'))return;const s=document.createElement('script');s.src='./components/aerial-ball-system.js?v=0.61.4';s.dataset.futliveAerial='1';document.head.appendChild(s)}
 function boot(){
   const ball=document.querySelector('.ball');
   if(!ball){setTimeout(boot,50);return}
