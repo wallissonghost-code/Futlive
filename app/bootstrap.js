@@ -2,9 +2,11 @@
 const cfg=window.FutLiveConfig;
 if(!cfg)throw new Error('FutLiveConfig não carregado');
 const $=id=>document.getElementById(id);
-const game=$('game'),pauseBtn=$('pauseBtn'),fx=$('forceFx'),fxText=$('forceFxText');
+const game=$('game'),pauseBtn=$('pauseBtn'),fx=$('forceFx'),fxText=$('forceFxText'),stage=$('fieldStage');
 const giftHud=new LiveGiftHUD({root:'#liveGiftHud',defaults:cfg.gifts});
 window.FutLiveHUD=giftHud;
+function ensureTeamElements(teamCfg,color){if(!stage)return;for(const id of teamCfg.ids){if($(id))continue;const el=document.createElement('div');el.className=`player ${color}`;el.id=id;stage.appendChild(el)}}
+ensureTeamElements(cfg.players.team1,'blue');ensureTeamElements(cfg.players.team2,'red');
 function buildTeam(teamCfg){return teamCfg.ids.map(id=>new FutLivePlayerSprite({element:'#'+id,base:teamCfg.base,frameCount:teamCfg.frames,fps:teamCfg.fps,team:teamCfg.team}).idle())}
 const team1=buildTeam(cfg.players.team1),team2=buildTeam(cfg.players.team2),players=[...team1,...team2];
 const byId={};cfg.players.team1.ids.forEach((id,i)=>byId[id]=team1[i]);cfg.players.team2.ids.forEach((id,i)=>byId[id]=team2[i]);window.FutLivePlayers={...byId,team1,team2,all:players};
