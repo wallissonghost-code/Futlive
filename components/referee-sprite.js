@@ -2,7 +2,7 @@
 const CFG=Object.freeze({
   movementBase:'./assets',
   cardBase:'./assets/referee',
-  display:{desktop:{width:40,height:46,left:-20,top:-42},mobile:{width:38,height:44,left:-19,top:-40},mobileMaxWidth:390},
+  display:{desktop:{width:36,height:42,left:-18,top:-39},mobile:{width:35,height:41,left:-17.5,top:-38},mobileMaxWidth:390},
   idleSpeed:2.5,
   walkFps:{min:8,normal:9,max:10,normalSpeed:58,maxSpeed:92},
   axisHysteresis:1.30,
