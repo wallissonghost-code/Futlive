@@ -13,10 +13,10 @@ function boot(){
   const fielders=t=>e.players.filter(p=>!p.sentOff&&!p.goalkeeper&&(!t||p.team===t));
   const goalX=(t,f)=>t==='blue'?f.right:f.left;
   const scoreDiff=t=>t==='blue'?e.score.blue-e.score.red:e.score.red-e.score.blue;
-  const elapsed=()=>Math.max(0,performance.now()-(window.FutLiveMatchState?.startedAt||performance.now()));
+  const elapsed=()=>Math.max(0,window.FutLiveMatchFlow?.getElapsedMs?.()??window.FutLiveMatchState?.elapsedMs??0);
   function stage(){const s=elapsed()/1000;return s<90?'EARLY':s<210?'MID':'LATE'}
   function possessionShare(team){const total=possession.blue+possession.red;return total>0?possession[team]/total:.5}
-  function updatePossessionClock(){const now=performance.now(),team=e.ball.owner?.team||null;if(possession.lastTeam){possession[possession.lastTeam]+=now-possession.lastAt}possession.lastAt=now;possession.lastTeam=team}
+  function updatePossessionClock(){const n=performance.now(),team=e.ball.owner?.team||null,playing=window.FutLiveMatchState?.phase==='PLAYING'&&!window.FutLiveApp?.isPaused?.();if(playing&&possession.lastTeam)possession[possession.lastTeam]+=n-possession.lastAt;possession.lastAt=n;possession.lastTeam=team}
   function derive(team,f){
     const diff=scoreDiff(team),st=stage(),brain=base.teams[team],share=possessionShare(team),losing=diff<0,winning=diff>0,late=st==='LATE';
     let mentality='BALANCED',risk=.50,tempo=.55,line=.50,press=.50,verticality=.50,width=.50;
@@ -37,32 +37,13 @@ function boot(){
   function adaptTarget(p,tx,ty,speed){
     if(!p||p.goalkeeper||p.sentOff)return{x:tx,y:ty,speed};const f=e.field(),c=context[p.team]||derive(p.team,f),a=attack(p.team),carrier=e.ball.owner,ownPoss=carrier?.team===p.team;
     let x=tx,y=ty,mult=1;
-    if(ownPoss){
-      const vertical=(c.verticality-.5)*f.w*.11;x+=a*vertical;
-      const center=f.h*.5,spread=(p.y<center?-1:1)*(c.width-.5)*f.h*.16;y+=spread;
-      if(c.mentality==='PROTECT'&&p!==carrier)x-=a*f.w*.035;
-      if(c.mentality==='ALL_OUT'&&p.personality!=='creator')x+=a*f.w*.045;
-      mult=.86+c.tempo*.26;
-    }else if(carrier){
-      const lineShift=(c.line-.5)*f.w*.13;x+=a*lineShift;
-      const center=f.h*.5;y=center+(y-center)*(c.mentality==='PROTECT'?.78:c.mentality==='ALL_OUT'?.92:.86);
-      const brain=base.teams[p.team];if((p===brain.pressor||p===brain.cover)&&c.press>.65)mult=1+(c.press-.5)*.38;
-      else mult=.92+c.press*.12;
-    }
+    if(ownPoss){const vertical=(c.verticality-.5)*f.w*.11;x+=a*vertical;const center=f.h*.5,spread=(p.y<center?-1:1)*(c.width-.5)*f.h*.16;y+=spread;if(c.mentality==='PROTECT'&&p!==carrier)x-=a*f.w*.035;if(c.mentality==='ALL_OUT'&&p.personality!=='creator')x+=a*f.w*.045;mult=.86+c.tempo*.26}
+    else if(carrier){const lineShift=(c.line-.5)*f.w*.13;x+=a*lineShift;const center=f.h*.5;y=center+(y-center)*(c.mentality==='PROTECT'?.78:c.mentality==='ALL_OUT'?.92:.86);const brain=base.teams[p.team];if((p===brain.pressor||p===brain.cover)&&c.press>.65)mult=1+(c.press-.5)*.38;else mult=.92+c.press*.12}
     return{x:clamp(x,f.left+30,f.right-30),y:clamp(y,f.top+30,f.bottom-42),speed:speed*mult}
   }
   e.moveToward=(p,tx,ty,speed,dt)=>{const q=adaptTarget(p,tx,ty,speed);return old.moveToward(p,q.x,q.y,q.speed,dt)};
-  e.choosePassTarget=(c)=>{
-    if(!c)return null;const f=e.field(),ctx=context[c.team]||derive(c.team,f),a=attack(c.team),cands=fielders(c.team).filter(p=>p!==c&&!tactics.offside(p,c.x));let best=null,bestScore=-1e9;
-    for(const p of cands){const forward=(p.x-c.x)*a,space=nearestOpponentDistance(c.team,p),dist=e.dist(c,p),goalGain=Math.abs(goalX(c.team,f)-c.x)-Math.abs(goalX(c.team,f)-p.x),weak=weakSideBonus(c.team,p,f);let s=space*.58-dist*.05+forward*(.12+ctx.verticality*.22)+goalGain*(.08+ctx.risk*.18)+weak*(.4+ctx.width*.6);
-      if(ctx.mentality==='PROTECT'&&forward<0)s+=20;if(ctx.mentality==='ALL_OUT'&&forward>35)s+=22;if(p.personality==='creator'&&ctx.mentality==='CONTROL')s+=12;if(p.personality==='finisher'&&ctx.risk>.62&&forward>0)s+=16;
-      if(s>bestScore){bestScore=s;best=p}}
-    return best||old.choosePassTarget(c)
-  };
-  e.pass=(c,t)=>{if(!c||!t)return;const f=e.field(),ctx=context[c.team]||derive(c.team,f),a=attack(c.team);const forward=(t.x-c.x)*a,across=Math.abs(t.y-c.y)>f.h*.30;
-    if(across&&ctx.width>.54&&nearestOpponentDistance(c.team,t)>38){const originalPass=c.skill.pass;c.skill.pass=clamp(c.skill.pass+.05,0,1);e.game.dataset.lastTeamAction='SWITCH_PLAY';const r=old.pass(c,t);c.skill.pass=originalPass;return r}
-    if(forward>45&&ctx.verticality>.68)e.game.dataset.lastTeamAction='DIRECT_ATTACK';else if(forward<0&&ctx.mentality==='PROTECT')e.game.dataset.lastTeamAction='RECYCLE';return old.pass(c,t)
-  };
+  e.choosePassTarget=(c)=>{if(!c)return null;const f=e.field(),ctx=context[c.team]||derive(c.team,f),a=attack(c.team),cands=fielders(c.team).filter(p=>p!==c&&!tactics.offside(p,c.x));let best=null,bestScore=-1e9;for(const p of cands){const forward=(p.x-c.x)*a,space=nearestOpponentDistance(c.team,p),dist=e.dist(c,p),goalGain=Math.abs(goalX(c.team,f)-c.x)-Math.abs(goalX(c.team,f)-p.x),weak=weakSideBonus(c.team,p,f);let s=space*.58-dist*.05+forward*(.12+ctx.verticality*.22)+goalGain*(.08+ctx.risk*.18)+weak*(.4+ctx.width*.6);if(ctx.mentality==='PROTECT'&&forward<0)s+=20;if(ctx.mentality==='ALL_OUT'&&forward>35)s+=22;if(p.personality==='creator'&&ctx.mentality==='CONTROL')s+=12;if(p.personality==='finisher'&&ctx.risk>.62&&forward>0)s+=16;if(s>bestScore){bestScore=s;best=p}}return best||old.choosePassTarget(c)};
+  e.pass=(c,t)=>{if(!c||!t)return;const f=e.field(),ctx=context[c.team]||derive(c.team,f),a=attack(c.team);const forward=(t.x-c.x)*a,across=Math.abs(t.y-c.y)>f.h*.30;if(across&&ctx.width>.54&&nearestOpponentDistance(c.team,t)>38){const originalPass=c.skill.pass;c.skill.pass=clamp(c.skill.pass+.05,0,1);e.game.dataset.lastTeamAction='SWITCH_PLAY';const r=old.pass(c,t);c.skill.pass=originalPass;return r}if(forward>45&&ctx.verticality>.68)e.game.dataset.lastTeamAction='DIRECT_ATTACK';else if(forward<0&&ctx.mentality==='PROTECT')e.game.dataset.lastTeamAction='RECYCLE';return old.pass(c,t)};
   e.takePossession=(p,reason='control')=>{updatePossessionClock();const r=old.takePossession(p,reason);if(p){const f=e.field(),ctx=derive(p.team,f);if(ctx.mentality==='ALL_OUT')p.nextThink=Math.min(p.nextThink||Infinity,performance.now()+260);if(ctx.mentality==='PROTECT')p.nextThink=Math.max(p.nextThink||0,performance.now()+520)}return r};
   e.ownedAI=(dt,f)=>{updatePossessionClock();derive('blue',f);derive('red',f);const owner=e.ball.owner;if(owner&&!owner.goalkeeper){const ctx=context[owner.team];owner.aiTeamRisk=ctx.risk;owner.aiTeamTempo=ctx.tempo;owner.aiMentality=ctx.mentality}return old.ownedAI(dt,f)};
   const oldFree=e.freeAI.bind(e);e.freeAI=(dt,f)=>{updatePossessionClock();derive('blue',f);derive('red',f);return oldFree(dt,f)};
