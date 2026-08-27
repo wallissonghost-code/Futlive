@@ -2,7 +2,7 @@
 const CFG=Object.freeze({
   movementBase:'./assets',
   cardBase:'./assets/referee',
-  display:{desktop:{width:68,height:78,left:-34,top:-70},mobile:{width:66,height:76,left:-33,top:-68},mobileMaxWidth:390},
+  display:{desktop:{width:40,height:46,left:-20,top:-42},mobile:{width:38,height:44,left:-19,top:-40},mobileMaxWidth:390},
   idleSpeed:2.5,
   walkFps:{min:8,normal:9,max:10,normalSpeed:58,maxSpeed:92},
   axisHysteresis:1.30,
@@ -36,7 +36,7 @@ class FutLiveRefereeSprite{
     this.direction='down';this.pendingDirection=null;this.pendingSince=0;this.lastDirectionAt=performance.now();this.anim='walk_down';this.index=0;this.moving=false;this.lastMotionAt=performance.now();this.smoothDX=0;this.smoothDY=0;this.walkPhase=0;this.lastAnimAt=performance.now();this.cardBusy=false;this.cardAnim=null;this.cardStartedAt=0;this.cardIndex=0;this.available=new Map();
     this.installStyle();this.preload();this.layoutMovement();this.showIdle('down');window.addEventListener('resize',()=>this.layoutMovement(),{passive:true});
   }
-  installStyle(){if(document.getElementById('refereeSpriteStyle'))return;const s=document.createElement('style');s.id='refereeSpriteStyle';s.textContent=`.referee-agent{position:absolute;z-index:5;width:0;height:0;pointer-events:none;overflow:visible}.referee-movement-img,.referee-card-sprite{position:absolute;display:block;object-fit:contain;filter:drop-shadow(0 3px 4px #0008);pointer-events:none}.referee-card-sprite{display:none}`;document.head.appendChild(s)}
+  installStyle(){if(document.getElementById('refereeSpriteStyle'))return;const s=document.createElement('style');s.id='refereeSpriteStyle';s.textContent=`.referee-agent{position:absolute;z-index:5;width:0;height:0;pointer-events:none;overflow:visible}.referee-movement-img,.referee-card-sprite{position:absolute;display:block;object-fit:contain;object-position:50% 100%;filter:drop-shadow(0 3px 4px #0008);pointer-events:none}.referee-card-sprite{display:none}`;document.head.appendChild(s)}
   preload(){for(let n=1;n<=32;n++){const src=moveUrl(n),i=new Image();i.onload=()=>this.available.set(src,true);i.onerror=()=>{this.available.set(src,false);console.warn('[Futlive][RefereeSprite] frame de movimento ausente:',src)};i.src=src}for(const [anim,files] of Object.entries(CARD))for(const f of files){const src=cardUrl(f),i=new Image();i.onload=()=>this.available.set(src,true);i.onerror=()=>{this.available.set(src,false);console.warn('[Futlive][RefereeSprite] frame de cartão ausente:',src,'animação:',anim)};i.src=src}}
   isMobile(){return window.matchMedia(`(max-width:${CFG.display.mobileMaxWidth}px)`).matches}
   layoutMovement(){const c=this.isMobile()?CFG.display.mobile:CFG.display.desktop;this.moveImg.style.width=c.width+'px';this.moveImg.style.height=c.height+'px';this.moveImg.style.left=c.left+'px';this.moveImg.style.top=c.top+'px'}
