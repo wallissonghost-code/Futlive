@@ -5,12 +5,11 @@ const CFG=Object.freeze({
   display:{desktop:{width:36,height:42,left:-18,top:-39},mobile:{width:35,height:41,left:-17.5,top:-38},mobileMaxWidth:390},
   idleSpeed:2.5,
   walkFps:{min:8,normal:9,max:10,normalSpeed:58,maxSpeed:92},
-  axisHysteresis:1.30,
-  minDirectionHoldMs:320,
-  inversionRatio:1.45,
-  inversionMinSpeed:42,
-  vectorSmoothingMs:190,
-  motionDeadZone:.12,
+  axisHysteresis:1.68,
+  minDirectionHoldMs:680,
+  directionConfirmMs:360,
+  vectorSmoothingMs:280,
+  motionDeadZone:.18,
   cardStepMs:260,
   cardHoldMs:620,
   cardFallback:{desktop:{width:46,height:52,scale:1.35,offsetX:-16,offsetY:-23,anchorY:.86},mobile:{width:44,height:50,scale:1.38,offsetX:-15,offsetY:-22,anchorY:.86}},
@@ -32,7 +31,7 @@ movementFrames(anim){return MOVE[anim]||MOVE.walk_down}walkAnim(dir){return`walk
 showMovement(anim,index=0){const frames=this.movementFrames(anim);this.anim=anim;this.index=((index%frames.length)+frames.length)%frames.length;const n=frames[this.index],src=moveUrl(n);this.cardImg.style.display='none';this.moveImg.style.display='block';if(!this.moveImg.src.endsWith(`frame_${String(n).padStart(3,'0')}.png`))this.moveImg.src=src;this.el.dataset.anim=anim;this.el.dataset.direction=this.direction;this.el.dataset.frame=String(n)}
 showIdle(dir=this.direction){this.moving=false;this.direction=dir||this.direction;this.pendingDirection=null;this.showMovement(this.walkAnim(this.direction),0);this.lastAnimAt=performance.now()}
 smoothVector(dx,dy,t){const dt=Math.max(1,Math.min(50,t-this.lastMotionAt));this.lastMotionAt=t;const alpha=1-Math.exp(-dt/CFG.vectorSmoothingMs);this.smoothDX+=(dx-this.smoothDX)*alpha;this.smoothDY+=(dy-this.smoothDY)*alpha;return[this.smoothDX,this.smoothDY]}
-chooseDirection(rawDX,rawDY,speed,t){const[dx,dy]=this.smoothVector(rawDX,rawDY,t),ax=Math.abs(dx),ay=Math.abs(dy);if(Math.hypot(dx,dy)<CFG.motionDeadZone)return this.direction;const currentHorizontal=this.direction==='left'||this.direction==='right';if(currentHorizontal&&Math.sign(rawDX)!==0&&((this.direction==='right'&&rawDX<0)||(this.direction==='left'&&rawDX>0))&&Math.abs(rawDX)>Math.abs(rawDY)*CFG.inversionRatio&&speed>=CFG.inversionMinSpeed){this.direction=rawDX>0?'right':'left';this.lastDirectionAt=t;this.pendingDirection=null;return this.direction}if(!currentHorizontal&&Math.sign(rawDY)!==0&&((this.direction==='down'&&rawDY<0)||(this.direction==='up'&&rawDY>0))&&Math.abs(rawDY)>Math.abs(rawDX)*CFG.inversionRatio&&speed>=CFG.inversionMinSpeed){this.direction=rawDY>0?'down':'up';this.lastDirectionAt=t;this.pendingDirection=null;return this.direction}let next=this.direction;if(currentHorizontal){if(ay>ax*CFG.axisHysteresis)next=dy>=0?'down':'up';else if(ax>=ay)next=dx>=0?'right':'left'}else{if(ax>ay*CFG.axisHysteresis)next=dx>=0?'right':'left';else if(ay>=ax)next=dy>=0?'down':'up'}if(next===this.direction){this.pendingDirection=null;return this.direction}if(t-this.lastDirectionAt<CFG.minDirectionHoldMs)return this.direction;if(this.pendingDirection!==next){this.pendingDirection=next;this.pendingSince=t;return this.direction}if(t-this.pendingSince>=CFG.minDirectionHoldMs){this.direction=next;this.lastDirectionAt=t;this.pendingDirection=null}return this.direction}
+chooseDirection(rawDX,rawDY,speed,t){const[dx,dy]=this.smoothVector(rawDX,rawDY,t),ax=Math.abs(dx),ay=Math.abs(dy);if(Math.hypot(dx,dy)<CFG.motionDeadZone)return this.direction;const currentHorizontal=this.direction==='left'||this.direction==='right';let next=this.direction;if(currentHorizontal){if(ay>ax*CFG.axisHysteresis)next=dy>=0?'down':'up';else if(ax>ay*.82)next=dx>=0?'right':'left'}else{if(ax>ay*CFG.axisHysteresis)next=dx>=0?'right':'left';else if(ay>ax*.82)next=dy>=0?'down':'up'}if(next===this.direction){this.pendingDirection=null;return this.direction}if(t-this.lastDirectionAt<CFG.minDirectionHoldMs)return this.direction;if(this.pendingDirection!==next){this.pendingDirection=next;this.pendingSince=t;return this.direction}if(t-this.pendingSince<CFG.directionConfirmMs)return this.direction;this.direction=next;this.lastDirectionAt=t;this.pendingDirection=null;return this.direction}
 fpsForSpeed(speed){const f=CFG.walkFps;if(speed<=f.normalSpeed){const p=Math.max(0,Math.min(1,(speed-CFG.idleSpeed)/(f.normalSpeed-CFG.idleSpeed)));return f.min+(f.normal-f.min)*p}const p=Math.max(0,Math.min(1,(speed-f.normalSpeed)/(f.maxSpeed-f.normalSpeed)));return f.normal+(f.max-f.normal)*p}
 updateMotion(dx,dy,speed,t=performance.now()){if(this.cardBusy){this.updateCard(t);return}const rawMag=Math.hypot(dx,dy);if(speed<=CFG.idleSpeed||rawMag<.01){this.smoothDX*=.88;this.smoothDY*=.88;if(this.moving)this.showIdle(this.direction);this.lastAnimAt=t;return}const dir=this.chooseDirection(dx,dy,speed,t),anim=this.walkAnim(dir),frames=this.movementFrames(anim),fps=this.fpsForSpeed(speed);const elapsed=Math.max(0,Math.min(80,t-this.lastAnimAt));this.lastAnimAt=t;this.walkPhase+=elapsed*fps/1000;const nextIndex=Math.floor(this.walkPhase)%frames.length;this.moving=true;if(this.anim!==anim||this.index!==nextIndex)this.showMovement(anim,nextIndex)}
 safeCardFiles(anim){const files=CARD[anim]||[],ok=files.filter(f=>this.available.get(cardUrl(f))!==false);if(ok.length)return ok;console.warn('[Futlive][RefereeSprite] animação de cartão indisponível:',anim);return[]}
