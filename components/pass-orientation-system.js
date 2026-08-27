@@ -55,6 +55,7 @@ function boot(){
   window.addEventListener('futlive:matchrestart',clear);
   window.addEventListener('futlive:matchphase',ev=>{if(ev.detail?.phase==='PLAYING')return;clear()});
   window.FutLivePassOrientation={version:VERSION,pending,dirTo,debug:p=>p?.aiPassOrientation||null};
+  if(!document.querySelector('script[data-possession-intelligence]')){const s=document.createElement('script');s.dataset.possessionIntelligence='1';s.src='./components/possession-intelligence-system.js?v=0.61.0-'+Date.now();document.head.appendChild(s)}
 }
 boot();
 })();
