@@ -23,7 +23,8 @@ function triggerForce(team='blue'){
   fxText.textContent=(team==='blue'?'AZUL':'VERMELHO')+' · FORÇA +';fx.classList.add('show');game.classList.add('force-'+team);
   fxTimer=setTimeout(()=>{fx.classList.remove('show');game.classList.remove('force-blue','force-red')},1300);
 }
-pauseBtn.onclick=()=>{paused=!paused;game.classList.toggle('is-paused',paused);pauseBtn.classList.toggle('paused',paused);pauseBtn.textContent=paused?'▶':'⏸';if(paused)players.forEach(p=>p.stop(false));else players.forEach(p=>p.resume())};
-window.FutLiveApp={game,giftHud,players,team1,team2,triggerForce,isPaused:()=>paused};
+function setPaused(next){paused=!!next;game.classList.toggle('is-paused',paused);pauseBtn.classList.toggle('paused',paused);pauseBtn.textContent=paused?'▶':'⏸';if(paused)players.forEach(p=>p.stop(false));else players.forEach(p=>p.resume());window.dispatchEvent(new CustomEvent('futlive:pausechange',{detail:{paused}}));return paused}
+pauseBtn.onclick=(ev)=>{const next=!paused;setPaused(next);if(ev?.isTrusted&&next)window.FutLiveMatchFlow?.openTimeDialog?.()};
+window.FutLiveApp={game,giftHud,players,team1,team2,triggerForce,isPaused:()=>paused,setPaused};
 window.FutLiveTest={force:triggerForce};
 })();
