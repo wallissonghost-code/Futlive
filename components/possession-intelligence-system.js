@@ -1,12 +1,12 @@
 (()=>{'use strict';
-const VERSION='0.62.2';
+const VERSION='0.62.3';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const other=t=>t==='blue'?'red':'blue';
 const now=()=>performance.now();
 function boot(){
   const e=window.FutLiveFootballEngine;
   if(!e||!e.players?.length||typeof e.ownedAI!=='function'){setTimeout(boot,45);return}
-  if(e.__possessionIntelligenceV0622)return;e.__possessionIntelligenceV0622=true;
+  if(e.__possessionIntelligenceV0623)return;e.__possessionIntelligenceV0623=true;
   const oldOwned=e.ownedAI.bind(e),attack=t=>t==='blue'?1:-1;
   const living=p=>p&&!p.sentOff&&!p.tempSuspended;
   const fielders=t=>e.players.filter(p=>living(p)&&!p.goalkeeper&&(!t||p.team===t));
@@ -29,6 +29,7 @@ function boot(){
   function decide(c,f,pressure){const t=now();if(t<(c.__possessionThinkAt||0))return false;const possess=t-(e.ownerSince||t),pick=bestPass(c,f),safe=pick.target&&pick.meta&&pick.meta.score>34&&pick.meta.mark.n<3&&pick.meta.lane.count<2,forwardSafe=safe&&pick.meta.forward>8;if(t>e.actionLock&&possess>520&&shouldLongShoot(c,f,pressure)){c.__possessionThinkAt=t+900;e.shoot(c,f);return true}if(pressure>=3){if(safe&&pick.meta.score>48){c.__possessionThinkAt=t+700;e.pass(c,pick.target);return true}c.__possessionThinkAt=t+380;return false}if(pressure>=2&&safe&&possess>620){c.__possessionThinkAt=t+720;e.pass(c,pick.target);return true}if(forwardSafe&&possess>900&&Math.random()<.46){c.__possessionThinkAt=t+760;e.pass(c,pick.target);return true}if(safe&&pick.meta.forward<0&&pressure>=1&&possess>1100){c.__possessionThinkAt=t+760;e.pass(c,pick.target);return true}c.__possessionThinkAt=t+(pressure?360:480);return false}
   e.ownedAI=(dt,f)=>{if(window.FutLiveMatchState?.phase&&window.FutLiveMatchState.phase!=='PLAYING')return;const c=e.ball.owner;if(!c)return;if(c.goalkeeper)return oldOwned(dt,f);if(c.sentOff||c.tempSuspended)return;const pressure=pressureCount(c,54);supportRuns(c,dt,f);defendWhileOwned(c,dt,f);carrierMove(c,dt,f,pressure);if(e.challengeOwner(c,dt))return;decide(c,f,pressure)};
   window.FutLivePossessionIntelligence={version:VERSION,bestPass,passScore,marking,laneSafety,pressureCount,shouldLongShoot,tacticalSlot};
+  if(!document.querySelector('script[data-central-player-brain]')){const s=document.createElement('script');s.dataset.centralPlayerBrain='1';s.src='./components/central-player-brain.js?v=0.62.1-'+Date.now();document.head.appendChild(s)}
 }
 boot();
 })();
