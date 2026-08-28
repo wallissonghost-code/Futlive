@@ -1,13 +1,13 @@
 (()=>{'use strict';
-const VERSION='0.61.1';
+const VERSION='0.61.2';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const other=t=>t==='blue'?'red':'blue';
 function boot(){
   const e=window.FutLiveFootballEngine;
   if(!e||typeof e.physics!=='function'||!e.players?.length){setTimeout(boot,40);return}
-  if(e.__outOfPlayV0611)return;e.__outOfPlayV0611=true;
+  if(e.__outOfPlayV0612)return;e.__outOfPlayV0612=true;
   if(!document.getElementById('futlive-sprite-render-fix')){const st=document.createElement('style');st.id='futlive-sprite-render-fix';st.textContent='.player-sprite-img{filter:none!important;-webkit-filter:none!important;backface-visibility:hidden;-webkit-backface-visibility:hidden}.player{box-shadow:none!important;background:transparent!important}';document.head.appendChild(st)}
-  if(!document.querySelector('script[data-boundary-restarts]')){const s=document.createElement('script');s.dataset.boundaryRestarts='1';s.src='./components/boundary-restart-system.js?v=0.1.0-'+Date.now();document.head.appendChild(s)}
+  if(!document.querySelector('script[data-boundary-restarts]')){const s=document.createElement('script');s.dataset.boundaryRestarts='1';s.src='./components/boundary-restart-system.js?v=0.2.0-'+Date.now();document.head.appendChild(s)}
   const oldPhysics=e.physics.bind(e);
   let lastEventAt=0;
   function active(){const flow=window.FutLiveMatchFlow;return flow?.state?.phase===flow?.PHASES?.PLAYING&&!window.FutLiveApp?.isPaused?.()}
