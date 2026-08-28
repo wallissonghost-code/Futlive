@@ -1,0 +1,11 @@
+{
+  "name": "futlive-qa",
+  "private": true,
+  "version": "0.61.0",
+  "scripts": {
+    "test:match": "playwright test tests/match-smoke.spec.js --reporter=line"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  }
+}
