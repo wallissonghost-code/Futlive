@@ -1,9 +1,10 @@
 (()=>{'use strict';
+const VERSION='0.62.0';
 const PHASES={SETUP:'KICKOFF_SETUP',READY:'KICKOFF_READY',KICKOFF:'KICKOFF'};
 function boot(){
   const e=window.FutLiveFootballEngine,game=document.getElementById('game'),pauseBtn=document.getElementById('pauseBtn');
   if(!e||!game||!pauseBtn||!e.players?.length){setTimeout(boot,45);return}if(window.FutLiveKickoffSystem)return;
-  const state={team:null,busy:false,initialDone:false,PHASES};
+  const state={team:null,busy:false,initialDone:false,PHASES,version:VERSION,continuity:null};
   const living=(team)=>e.players.filter(p=>p.team===team&&!p.sentOff);
   const lines=(team)=>living(team).filter(p=>!p.goalkeeper);
   function setPhase(p){window.FutLiveMatchFlow?.setPhase(p)}
@@ -16,6 +17,16 @@ function boot(){
       else{let x=f.w*p.home[0],y=f.h*p.home[1];const blue=ownBlue(p);x=blue?Math.min(x,cx-34):Math.max(x,cx+34);if(p.team===other){const d=Math.hypot(x-cx,y+27-cy);if(d<78)x=blue?cx-82:cx+82}map.set(p,{x,y})}
     }return{map,taker,mate,cx,cy,f}}
   function parkReferee(setup,team){const r=window.FutLiveReferee;if(!r)return;const side=team==='blue'?1:-1;r.target={x:setup.cx+side*58,y:setup.cy+66};r.followX=r.x;r.followY=r.y;if(r.STATES?.APPROACHING)r.state=r.STATES.APPROACHING}
+  function beginContinuityGuard(){
+    const started=performance.now(),last=new Map(e.players.map(p=>[p,{x:p.x,y:p.y}]));
+    state.continuity={started,blocked:0,lastBlocked:null};
+    function frame(t){if(t-started>1100){state.continuity.endedAt=t;return}
+      for(const p of e.players){if(p.sentOff)continue;const prev=last.get(p);if(!prev){last.set(p,{x:p.x,y:p.y});continue}const dx=p.x-prev.x,dy=p.y-prev.y,d=Math.hypot(dx,dy);const maxStep=p.goalkeeper?18:22;
+        if(d>maxStep){const home=e.field();const hx=home.w*(p.home?.[0]??.5),hy=home.h*(p.home?.[1]??.5),jumpedToHome=Math.hypot(p.x-hx,p.y-hy)<3.5;const scale=maxStep/(d||1);p.x=prev.x+dx*scale;p.y=prev.y+dy*scale;p.aiVelocity={x:0,y:0};state.continuity.blocked++;state.continuity.lastBlocked={player:p.el?.id||null,distance:Number(d.toFixed(1)),jumpedToHome,at:t};window.dispatchEvent(new CustomEvent('futlive:kickoff-continuity-block',{detail:state.continuity.lastBlocked}))}
+        last.set(p,{x:p.x,y:p.y})}
+      e.paint?.();requestAnimationFrame(frame)
+    }requestAnimationFrame(frame)
+  }
   function begin(team,{initial=false,onStarted=null}={}){if(state.busy)return false;state.busy=true;state.team=team;setPhase(PHASES.SETUP);if(!game.classList.contains('is-paused'))pauseBtn.click();
     const setup=targets(team),start=performance.now();e.ball.owner=null;e.ball.type='free';e.ball.x=setup.cx;e.ball.y=setup.cy;e.ball.vx=e.ball.vy=0;e.ball.curve=0;parkReferee(setup,team);
     let last=performance.now(),stable=0;function frame(t){if(window.FutLiveMatchState?.phase!==PHASES.SETUP)return;const dt=Math.min(.04,(t-last)/1000||.016);last=t;let max=0;
@@ -24,7 +35,7 @@ function boot(){
   function ready(setup,onStarted,maxRemaining=0){setPhase(PHASES.READY);for(const [p] of setup.map){p.aiVelocity={x:0,y:0};p.ctrl.idle();p.lastDir='idle'}e.ball.owner=null;e.ball.x=setup.cx;e.ball.y=setup.cy;e.ball.vx=e.ball.vy=0;e.ball.type='free';e.paint();state.lastSetupResidual=maxRemaining;setTimeout(()=>kick(setup,onStarted),420)}
   function kick(setup,onStarted){const {taker,mate}=setup;if(!taker||!mate){setPhase('PLAYING');if(game.classList.contains('is-paused'))pauseBtn.click();state.busy=false;return}
     setPhase(PHASES.KICKOFF);taker.facing=taker.team==='blue'?'left':'right';const start=e.foot(taker),target=e.foot(mate),dx=target.x-start.x,dy=target.y-start.y,m=Math.hypot(dx,dy)||1;e.ball.owner=null;e.ball.type='pass';e.ball.lastTouch=taker;e.ball.intended=mate;e.ball.x=start.x;e.ball.y=start.y;e.ball.vx=dx/m*128;e.ball.vy=dy/m*128;e.ball.pickupLock=performance.now()+90;taker.ctrl.kick();
-    if(game.classList.contains('is-paused'))pauseBtn.click();window.FutLiveGroundGame?.protect(taker,350);window.FutLiveGroundGame?.protect(mate,430);setTimeout(()=>{setPhase('PLAYING');window.FutLiveGroundGame?.protect(mate,360);window.FutLiveReferee?.releaseFollow();state.busy=false;state.initialDone=true;if(typeof onStarted==='function')onStarted()},260)}
+    if(game.classList.contains('is-paused'))pauseBtn.click();window.FutLiveGroundGame?.protect(taker,350);window.FutLiveGroundGame?.protect(mate,430);setTimeout(()=>{beginContinuityGuard();setPhase('PLAYING');window.FutLiveGroundGame?.protect(mate,360);window.FutLiveReferee?.releaseFollow();state.busy=false;state.initialDone=true;if(typeof onStarted==='function')onStarted()},260)}
   state.beginInitial=()=>begin(Math.random()<.5?'blue':'red',{initial:true});state.beginAfterGoal=(scoringTeam,onStarted)=>begin(scoringTeam==='blue'?'red':'blue',{onStarted});state.beginForTeam=(team,onStarted)=>begin(team,{onStarted});window.FutLiveKickoffSystem=state;
 }
 boot();
