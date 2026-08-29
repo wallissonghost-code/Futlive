@@ -4,10 +4,31 @@ function bind(){
   const engine=window.FutLiveFootballEngine;
   if(!stage||!camera||!root||!engine){setTimeout(bind,80);return}
   engine.game=stage;
-  engine.field=()=>{
-    const r=stage.getBoundingClientRect();
-    return{w:r.width,h:r.height,left:r.width*.022,right:r.width*.978,top:r.height*.035,bottom:r.height*.965,goalTop:r.height*.365,goalBottom:r.height*.635,goalDepth:r.width*.035}
+
+  // A geometria do campo é estado físico do jogo. Um reflow temporário do Safari
+  // não pode transformar o campo em 0x0 e contaminar a simulação.
+  let lastGeometry=null;
+  const readGeometry=()=>{
+    const r=stage.getBoundingClientRect(),w=r.width,h=r.height;
+    if(Number.isFinite(w)&&Number.isFinite(h)&&w>=120&&h>=80){
+      lastGeometry={w,h,left:w*.022,right:w*.978,top:h*.035,bottom:h*.965,goalTop:h*.365,goalBottom:h*.635,goalDepth:w*.035};
+    }
+    return lastGeometry;
   };
+  // Captura uma geometria válida antes de qualquer loop de partida.
+  readGeometry();
+  engine.field=()=>readGeometry()||{
+    w:stage.offsetWidth||790,
+    h:stage.offsetHeight||445,
+    left:(stage.offsetWidth||790)*.022,
+    right:(stage.offsetWidth||790)*.978,
+    top:(stage.offsetHeight||445)*.035,
+    bottom:(stage.offsetHeight||445)*.965,
+    goalTop:(stage.offsetHeight||445)*.365,
+    goalBottom:(stage.offsetHeight||445)*.635,
+    goalDepth:(stage.offsetWidth||790)*.035
+  };
+
   const syncPause=()=>stage.classList.toggle('is-paused',root.classList.contains('is-paused'));
   new MutationObserver(syncPause).observe(root,{attributes:true,attributeFilter:['class']});
   syncPause();
