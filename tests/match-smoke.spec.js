@@ -4,8 +4,8 @@ async function openGame(page){
   await page.setViewportSize({width:390,height:844});
   const pageErrors=[];
   page.on('pageerror',err=>pageErrors.push(err?.stack||String(err)));
-  await page.goto('http://127.0.0.1:4173/?v=0.67&qa=1',{waitUntil:'domcontentloaded'});
-  await page.waitForFunction(()=>window.FutLiveFootballEngine?.players?.length===14&&window.FutLiveCentralBrain&&window.FutLiveOutOfPlay&&window.FutLiveBoundaryRestarts&&window.FutLiveBallContact&&window.FutLiveActionOrientation,null,{timeout:10000});
+  await page.goto('http://127.0.0.1:4173/?v=0.68&qa=1',{waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.FutLiveFootballEngine?.players?.length===14&&window.FutLiveCentralBrain&&window.FutLiveOutOfPlay&&window.FutLiveBoundaryRestarts&&window.FutLiveBallContact&&window.FutLiveActionOrientation&&window.FutLiveGoalkeeperLiveness,null,{timeout:10000});
   return pageErrors;
 }
 
@@ -48,8 +48,7 @@ test('owned ball is always in front of the rendered sprite',async({page})=>{
     e.takePossession(p,'qa-orientation');
     for(const dir of ['right','left','up','down']){
       p.ctrl.cancelPendingDirection?.();p.ctrl.play(dir,8,{restart:true});
-      p.facing=dir==='right'?'up':'right';
-      e.syncOwnedBall();
+      p.facing=dir==='right'?'up':'right';e.syncOwnedBall();
       out.push({dir,rendered:window.FutLiveBallContact.visualDirection(p),dx:e.ball.x-p.x,dy:e.ball.y-(p.y+27)});
     }
     return out
@@ -71,6 +70,32 @@ test('intended receiver turns toward incoming pass',async({page})=>{
   await page.waitForTimeout(180);
   const state=await page.evaluate(id=>{const e=window.FutLiveFootballEngine,p=e.players.find(x=>x.el.id===id);return window.FutLiveActionOrientation.debug(p)},id);
   expect(state.reason).toBe('RECEIVE_BALL');expect(state.action).toBe('left');expect(state.rendered).toBe('left');
+  expect(pageErrors,`page errors: ${pageErrors.join('\n')}`).toEqual([]);
+});
+
+test('AI plays complete matches without goalkeeper freeze',async({page})=>{
+  test.setTimeout(90000);
+  const pageErrors=await openGame(page);await waitPlaying(page);
+  for(let match=0;match<3;match++){
+    await page.evaluate(()=>{
+      window.FutLiveMatchFlow.setDurationMinutes(.25);
+      if(window.FutLiveMatchState.phase==='FINISHED')window.FutLiveMatchFlow.restartMatch();
+    });
+    if(match>0)await waitPlaying(page);
+    await page.waitForFunction(()=>window.FutLiveMatchState?.phase==='FINISHED',null,{timeout:26000});
+    const snapshot=await page.evaluate(()=>({
+      liveness:window.FutLiveGoalkeeperLiveness.debug(),
+      score:{...(window.FutLiveFootballEngine.score||{})},
+      players:window.FutLiveFootballEngine.players.map(p=>({id:p.el.id,x:p.x,y:p.y}))
+    }));
+    for(const p of snapshot.players)expect([p.x,p.y].every(Number.isFinite),`non-finite ${p.id} after full match ${match+1}`).toBeTruthy();
+    if(match<2)await page.evaluate(()=>window.FutLiveMatchFlow.restartMatch());
+  }
+  const final=await page.evaluate(()=>window.FutLiveGoalkeeperLiveness.debug());
+  const physical=Object.values(final.goalkeepers).reduce((n,g)=>n+g.physicalRecoveries,0);
+  const visual=Object.values(final.goalkeepers).reduce((n,g)=>n+g.visualRecoveries,0);
+  expect(physical,`goalkeeper physical freeze recoveries: ${JSON.stringify(final)}`).toBeLessThanOrEqual(1);
+  expect(visual,`goalkeeper visual freeze recoveries: ${JSON.stringify(final)}`).toBeLessThanOrEqual(2);
   expect(pageErrors,`page errors: ${pageErrors.join('\n')}`).toEqual([]);
 });
 
