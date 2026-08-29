@@ -6,7 +6,14 @@ function boot(){
   engine.players.forEach(p=>{if(!p.goalkeeper){p.skill.shoot=Math.max(p.skill.shoot,.72);p.skill.composure=Math.max(p.skill.composure,.68)}});
   const originalChoosePassTarget=engine.choosePassTarget.bind(engine);
   engine.choosePassTarget=(carrier)=>{if(carrier&&!carrier.goalkeeper){const f=engine.field(),goalX=carrier.team==='blue'?f.right:f.left,goalDist=Math.abs(goalX-carrier.x);if(goalDist<f.w*.31)return null}return originalChoosePassTarget(carrier)};
-  engine.pinGoalkeeper=(p,f)=>{p.x=p.team==='blue'?f.left+46:f.right-46;p.y=engine.clamp(p.y,f.goalTop+8,f.goalBottom-27-6)};engine.goalkeepers.forEach(g=>engine.pinGoalkeeper(g,engine.field()));
+  engine.pinGoalkeeper=(p,f)=>{
+    // Nunca fixe o goleiro em um X constante. A IA precisa poder ajustar profundidade/ângulo.
+    const minX=p.team==='blue'?f.left+16:f.right-f.w*.19,maxX=p.team==='blue'?f.left+f.w*.19:f.right-16;
+    if(!Number.isFinite(p.x))p.x=p.team==='blue'?f.left+42:f.right-42;
+    p.x=engine.clamp(p.x,minX,maxX);
+    p.y=engine.clamp(p.y,f.goalTop+8,f.goalBottom-27-6)
+  };
+  engine.goalkeepers.forEach(g=>engine.pinGoalkeeper(g,engine.field()));
   const style=document.createElement('style');style.textContent=`.goalFlash{position:fixed;z-index:95;left:50%;top:34%;transform:translate(-50%,-50%) scale(.72);opacity:0;pointer-events:none;text-align:center;transition:.18s ease}.goalFlash.show{opacity:1;transform:translate(-50%,-50%) scale(1)}.goalFlash .goalWord{font-size:44px;line-height:.9;font-weight:1000;letter-spacing:.04em;text-shadow:0 5px 16px #000c}.goalFlash .goalTeam{display:inline-block;margin-top:10px;padding:8px 15px;border-radius:999px;background:#071019e8;border:1px solid #ffffff2b;font-size:10px;font-weight:950;letter-spacing:.12em}.goalFlash.blue .goalWord,.goalFlash.blue .goalTeam{color:#73a9ff}.goalFlash.red .goalWord,.goalFlash.red .goalTeam{color:#ff7785}.goalFlash .goalScore{margin-top:7px;font-size:18px;font-weight:1000;text-shadow:0 3px 10px #000b}`;document.head.appendChild(style);
   const flash=document.createElement('div');flash.className='goalFlash';flash.innerHTML='<div class="goalWord">GOOOL!</div><div class="goalTeam"></div><div class="goalScore"></div>';document.body.appendChild(flash);
   let goalLock=false;
