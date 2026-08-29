@@ -2,10 +2,32 @@ const { test, expect } = require('@playwright/test');
 
 test('Futlive kickoff continuity, clock and throw-in recovery', async ({ page }) => {
   const pageErrors = [];
-  page.on('pageerror', err => pageErrors.push(String(err)));
+  page.on('pageerror', err => pageErrors.push(err?.stack || String(err)));
 
   await page.goto('http://127.0.0.1:4173/?v=0.61&qa=1', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.FutLiveFootballEngine?.players?.length === 14, null, { timeout: 10000 });
+
+  // QA-only invariant tracer: fail on the FIRST writer that produces NaN/Infinity.
+  await page.evaluate(() => {
+    const e = window.FutLiveFootballEngine;
+    for (const p of e.players) {
+      for (const key of ['x', 'y']) {
+        let value = p[key];
+        Object.defineProperty(p, key, {
+          configurable: true,
+          enumerable: true,
+          get() { return value; },
+          set(next) {
+            if (!Number.isFinite(next)) {
+              const id = p.el?.id || `${p.team}-${p.slot}`;
+              throw new Error(`NON_FINITE_COORD ${id}.${key}: ${String(next)}`);
+            }
+            value = next;
+          }
+        });
+      }
+    }
+  });
 
   const samples = [];
   const started = Date.now();
@@ -28,6 +50,12 @@ test('Futlive kickoff continuity, clock and throw-in recovery', async ({ page })
 
   expect(samples.some(s => s.phase === 'KICKOFF')).toBeTruthy();
   expect(samples.some(s => s.phase === 'PLAYING')).toBeTruthy();
+
+  for (const s of samples) {
+    for (const p of s.players) {
+      expect(Number.isFinite(p.x) && Number.isFinite(p.y), `non-finite snapshot ${p.id} @ ${s.phase}`).toBeTruthy();
+    }
+  }
 
   const suspicious = [];
   for (let i = 1; i < samples.length; i++) {
