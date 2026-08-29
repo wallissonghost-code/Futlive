@@ -1,18 +1,41 @@
 (()=>{'use strict';
-const VERSION='0.50';
+const VERSION='0.63';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const DIR={right:[1,0],left:[-1,0],up:[0,-1],down:[0,1]};
 function boot(){
-  const e=window.FutLiveFootballEngine;if(!e||!e.players?.length){setTimeout(boot,50);return}if(e.__tackleV050)return;e.__tackleV050=true;
+  const e=window.FutLiveFootballEngine;if(!e||!e.players?.length){setTimeout(boot,50);return}if(e.__tackleV063)return;e.__tackleV063=true;
   const cooldown=new Map(),active=new Map(),vulnerable=new Map();
   const originalMove=e.moveToward.bind(e);
   e.moveToward=(p,tx,ty,speed,dt)=>{const t=performance.now();if(p?.sentOff)return 0;if(active.has(p))return Math.hypot(tx-p.x,ty-p.y);if((vulnerable.get(p)||0)>t)speed*=.44;return originalMove(p,tx,ty,speed,dt)};
-  const vec=p=>DIR[p.facing]||DIR[p.lastDir]||[p.team==='blue'?1:-1,0];
+  const vec=p=>{const s=active.get(p);if(s)return[s.nx,s.ny];return DIR[p.facing]||DIR[p.lastDir]||[p.team==='blue'?1:-1,0]};
   const pid=p=>p?.el?.id||null;
   function emit(type,detail){window.dispatchEvent(new CustomEvent(type,{detail}))}
   function dotTo(p,target){const f=vec(p),dx=target.x-p.x,dy=target.y-p.y,m=Math.hypot(dx,dy)||1;return(f[0]*dx+f[1]*dy)/m}
   function carrierRear(p,c){const f=vec(c),dx=p.x-c.x,dy=p.y-c.y,m=Math.hypot(dx,dy)||1;return(f[0]*dx+f[1]*dy)/m<-.35}
   function emotionRisk(p){const s=p.emotionState||'calm';return s==='angry'?.10:s==='frustrated'?.07:s==='motivated'?.035:s==='cocky'?.055:s==='focused'?-.06:s==='demotivated'?-.08:0}
+  function horizontalHistory(p){
+    const vx=p.aiVelocity?.x||0;if(Math.abs(vx)>2)return vx>0?'right':'left';
+    const d=p.facing||p.lastDir;if(d==='right'||d==='left')return d;
+    return null
+  }
+  function slideFrameFor(p,dx,dy){
+    const ax=Math.abs(dx),ay=Math.abs(dy);
+    if(ax>Math.max(5,ay*.18))return dx>=0?31:32;
+    const history=horizontalHistory(p);if(history)return history==='right'?31:32;
+    if(dx>0)return 31;if(dx<0)return 32;
+    return p.team==='blue'?31:32
+  }
+  function holdSlideFrame(p,frame){
+    const c=p.ctrl;if(!c)return;
+    c.cancelPendingDirection?.();c.stop?.(false);c.state='slide';c.index=0;
+    if(c.img&&c.src)c.img.src=c.src(frame);
+    if(c.el){c.el.dataset.anim='slide';c.el.dataset.slideFrame=String(frame)}
+    p.slideFrame=frame
+  }
+  function clearSlideFrame(p){
+    if(p.ctrl?.el)delete p.ctrl.el.dataset.slideFrame;
+    delete p.slideFrame
+  }
   function canAttempt(p,c,dt){
     if(window.FutLiveMatchState?.phase!=='PLAYING'||!c||e.ball.owner!==c||p.goalkeeper||p.sentOff||p===c||p.team===c.team||active.has(p))return false;
     const now=performance.now();if((cooldown.get(p)||0)>now||(vulnerable.get(p)||0)>now)return false;
@@ -24,11 +47,13 @@ function boot(){
   }
   function start(p,c){
     if(!c||e.ball.owner!==c)return false;
-    const dx=c.x-p.x,dy=c.y-p.y,m=Math.hypot(dx,dy)||1,now=performance.now();p.facing=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');
-    active.set(p,{owner:c,nx:dx/m,ny:dy/m,start:now,end:now+410,contact:false,outcome:null,ownerHadBall:true});cooldown.set(p,now+4200+Math.random()*1800);
-    p.ctrl.slide();p.lastDir='slide';emit('futlive:tackle-start',{player:pid(p),team:p.team,target:pid(c),targetHadBall:true});return true
+    const dx=c.x-p.x,dy=c.y-p.y,m=Math.hypot(dx,dy)||1,now=performance.now(),frame=slideFrameFor(p,dx,dy);
+    const physicalDir=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');
+    p.facing=physicalDir;
+    active.set(p,{owner:c,nx:dx/m,ny:dy/m,start:now,end:now+410,contact:false,outcome:null,ownerHadBall:true,frame});cooldown.set(p,now+4200+Math.random()*1800);
+    holdSlideFrame(p,frame);p.lastDir=physicalDir;emit('futlive:tackle-start',{player:pid(p),team:p.team,target:pid(c),targetHadBall:true,frame,direction:physicalDir});return true
   }
-  function finish(p,penalty=650){active.delete(p);vulnerable.set(p,performance.now()+penalty);setTimeout(()=>{if(!active.has(p)&&!p.sentOff)p.ctrl?.idle?.()},Math.min(220,penalty));}
+  function finish(p,penalty=650){active.delete(p);clearSlideFrame(p);vulnerable.set(p,performance.now()+penalty);setTimeout(()=>{if(!active.has(p)&&!p.sentOff)p.ctrl?.idle?.()},Math.min(220,penalty));}
   function classify(p,c,s){
     const ballDist=e.footDist(p),body=e.dist(p,c),rear=carrierRear(p,c),angle=dotTo(p,c),relSpeed=clamp((p.speed+(c.speed||55))/150,0,1),late=e.ball.owner!==c;
     const ballFirst=!late&&ballDist<=15&&ballDist<=body*.72,intensity=clamp(.42+relSpeed*.34+(rear?.18:0)+(angle<.58?.08:0)+(late?.12:0),0,1);
@@ -50,7 +75,7 @@ function boot(){
   function updateSlides(dt){
     const now=performance.now();for(const [p,s] of [...active]){
       const c=s.owner;if(!c||c.sentOff){finish(p,500);continue}
-      p.ctrl.slide();p.lastDir='slide';p.x+=s.nx*p.speed*1.52*dt;p.y+=s.ny*p.speed*1.52*dt;
+      holdSlideFrame(p,s.frame);p.x+=s.nx*p.speed*1.52*dt;p.y+=s.ny*p.speed*1.52*dt;
       if(!s.contact){const ballDist=e.footDist(p),body=e.dist(p,c),late=e.ball.owner!==c;
         if(ballDist<=17||body<=p.radius+c.radius+5){s.contact=true;const info=classify(p,c,s);s.outcome=info.classification;if(info.classification!=='CLEAN_TACKLE'){foul(p,c,info);continue}cleanTackle(p,c,s,info);continue}
         if(late&&body<=p.radius+c.radius+11){s.contact=true;const info=classify(p,c,s);foul(p,c,info);continue}
@@ -62,7 +87,7 @@ function boot(){
       const c=e.ball.owner;if(c&&!c.goalkeeper&&!c.sentOff){for(const p of e.opponents(c.team)){if(canAttempt(p,c,dt)){start(p,c);break}}}
       updateSlides(dt)
     }else if(active.size){for(const p of [...active.keys()])finish(p,500)}requestAnimationFrame(loop)}requestAnimationFrame(loop);
-  window.FutLiveTackleSystem={version:VERSION,cooldown,active,vulnerable,try:(id)=>{const p=e.players.find(x=>x.el.id===id),c=e.ball.owner;if(p&&c&&p.team!==c.team&&!p.sentOff)return start(p,c);return false}};
+  window.FutLiveTackleSystem={version:VERSION,cooldown,active,vulnerable,slideFrameFor,try:(id)=>{const p=e.players.find(x=>x.el.id===id),c=e.ball.owner;if(p&&c&&p.team!==c.team&&!p.sentOff)return start(p,c);return false}};
 }
 boot();
 })();
