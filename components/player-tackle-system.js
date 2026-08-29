@@ -11,7 +11,7 @@ function boot(){
   function emit(type,detail){window.dispatchEvent(new CustomEvent(type,{detail}))}
   function dotPoint(p,q){const f=vec(p),from=e.foot?.(p)||{x:p.x,y:p.y+27},dx=q.x-from.x,dy=q.y-from.y,m=Math.hypot(dx,dy)||1;return(f[0]*dx+f[1]*dy)/m}
   function carrierRear(p,c){const f=vec(c),dx=p.x-c.x,dy=p.y-c.y,m=Math.hypot(dx,dy)||1;return(f[0]*dx+f[1]*dy)/m<-.28}
-  function urgency(p,c){const f=e.field(),brain=window.FutLiveFootballAI?.teams?.[p.team],own=p.team==='blue'?f.left:f.right,danger=1-clamp(Math.abs(c.x-own)/(f.w*.68),0,1);return(brain?.pressor===p?.10:0)+(brain?.phase==='TRANSITION_DEFENSE'?.06:0)+danger*.055}
+  function urgency(p,c){const f=e.field(),brain=window.FutLiveFootballAI?.teams?.[p.team],own=p.team==='blue'?f.left:f.right,danger=1-clamp(Math.abs(c.x-own)/(f.w*.68),0,1);return(brain?.pressor===p ? .10 : 0)+(brain?.phase==='TRANSITION_DEFENSE' ? .06 : 0)+danger*.055}
   function horizontalHistory(p){const vx=p.aiVelocity?.x||0;if(Math.abs(vx)>3)return vx>0?'right':'left';const d=p.facing||p.lastDir;return d==='right'||d==='left'?d:null}
   function slideFrameFor(p,dx,dy){if(Math.abs(dx)>Math.max(5,Math.abs(dy)*.18))return dx>=0?31:32;const h=horizontalHistory(p);if(h)return h==='right'?31:32;return dx>=0?31:32}
   function holdSlideFrame(p,frame){const c=p.ctrl;if(!c)return;c.cancelPendingDirection?.();c.stop?.(false);c.state='slide';c.index=0;if(c.img&&c.src)c.img.src=c.src(frame);if(c.el){c.el.dataset.anim='slide';c.el.dataset.slideFrame=String(frame)}p.slideFrame=frame}
@@ -37,7 +37,7 @@ function boot(){
   function finish(p,penalty=600){active.delete(p);clearSlideFrame(p);vulnerable.set(p,performance.now()+penalty);setTimeout(()=>{if(!active.has(p)&&!p.sentOff)p.ctrl?.idle?.()},Math.min(180,penalty))}
   function foul(p,c,reason='BODY_FIRST'){
     stats.fouls++;e.ball.owner=null;e.ball.type='foul-dead';e.ball.vx=e.ball.vy=0;const q=e.foot?.(c)||{x:c.x,y:c.y+27};e.ball.x=q.x;e.ball.y=q.y;
-    const rear=carrierRear(p,c),intensity=clamp(.5+(rear?.22:0)+(p.speed||55)/260,0,1),classification=rear||intensity>.82?'RECKLESS_FOUL':'FOUL';
+    const rear=carrierRear(p,c),intensity=clamp(.5+(rear ? .22 : 0)+(p.speed||55)/260,0,1),classification=rear||intensity>.82?'RECKLESS_FOUL':'FOUL';
     emit('futlive:tackle-result',{player:pid(p),victim:pid(c),result:classification,ballFirst:false,reason});window.dispatchEvent(new CustomEvent('futlive:foul',{detail:{classification,ballFirst:false,rear,late:false,intensity,offender:p,victim:c,x:e.ball.x,y:e.ball.y}}));finish(p,classification==='RECKLESS_FOUL'?1200:900)
   }
   function winBall(p,c,s,ballDist){
