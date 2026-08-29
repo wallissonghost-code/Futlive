@@ -27,8 +27,10 @@ test('mobile kickoff has finite continuous positions and working clock',async({p
 
 test('throw-in detector enters and leaves set piece',async({page})=>{
   const pageErrors=await openGame(page);await waitPlaying(page);
-  await page.evaluate(()=>{const e=window.FutLiveFootballEngine,f=e.field(),last=e.players.find(p=>p.team==='blue'&&!p.goalkeeper);e.ball.owner=null;e.ball.lastTouch=last;e.ball.type='free';e.ball.x=(f.left+f.right)/2;e.ball.y=f.bottom-2;e.ball.vx=0;e.ball.vy=220;e.ball.pickupLock=performance.now()+1000});
-  await page.waitForFunction(()=>window.FutLiveMatchState?.phase==='SET_PIECE',null,{timeout:3000});
+  await page.evaluate(()=>{const e=window.FutLiveFootballEngine,f=e.field(),last=e.players.find(p=>p.team==='blue'&&!p.goalkeeper);window.__qaPhysicsBefore=String(e.physics);e.ball.owner=null;e.ball.lastTouch=last;e.ball.type='free';e.ball.x=(f.left+f.right)/2;e.ball.y=f.bottom-2;e.ball.vx=0;e.ball.vy=220;e.ball.pickupLock=performance.now()+1000});
+  await page.waitForTimeout(650);
+  const diag=await page.evaluate(()=>{const e=window.FutLiveFootballEngine;return{phase:window.FutLiveMatchState?.phase,paused:window.FutLiveApp?.isPaused?.(),ball:{x:e.ball.x,y:e.ball.y,vx:e.ball.vx,vy:e.ball.vy,type:e.ball.type},field:e.field(),physicsBefore:window.__qaPhysicsBefore,physicsNow:String(e.physics),outOfPlay:window.FutLiveOutOfPlay?.version||null,boundary:window.FutLiveBoundaryRestarts?{version:window.FutLiveBoundaryRestarts.version,state:window.FutLiveBoundaryRestarts.state}:null,aerial:window.FutLiveAerialBall?.version||null}});
+  expect(diag.phase,`throw-in diagnostic: ${JSON.stringify(diag)}`).toBe('SET_PIECE');
   await page.waitForFunction(()=>window.FutLiveMatchState?.phase==='PLAYING',null,{timeout:10000});
   expect(pageErrors,`page errors: ${pageErrors.join('\n')}`).toEqual([])
 });
