@@ -1,12 +1,12 @@
 (()=>{'use strict';
-const VERSION='0.66.0';
+const VERSION='0.67.0';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const now=()=>performance.now();
 const attack=t=>t==='blue'?1:-1;
 function boot(){
   const e=window.FutLiveFootballEngine,pi=window.FutLivePlayerIntelligence,gkai=window.FutLiveGoalkeeperAI;
   if(!e||!e.players?.length||!pi||!gkai){setTimeout(boot,45);return}
-  if(e.__movementStabilityV0660)return;e.__movementStabilityV0660=true;
+  if(e.__movementStabilityV0670)return;e.__movementStabilityV0670=true;
 
   const roleById={player11:'wing',player12:'support',player13:'wing',player14:'support'};
   for(const p of e.players){const role=roleById[p.el?.id];if(!role)continue;p.personality=role;p.aiProfile=null;pi.profile(p)}
@@ -16,7 +16,15 @@ function boot(){
     if(!p.ctrl||p.ctrl.__stableDirectionWrapped)continue;p.ctrl.__stableDirectionWrapped=true;
     const rawMove=p.ctrl.move.bind(p.ctrl),rawIdle=p.ctrl.idle.bind(p.ctrl);
     visual.set(p,{dir:p.lastDir&&p.lastDir!=='idle'?p.lastDir:(p.team==='blue'?'right':'left'),candidate:null,candidateAt:0,lastSwitch:0,lastMoveAt:0});
-    p.ctrl.move=(dir)=>{const s=visual.get(p),t=now();if(!s)return rawMove(dir);s.lastMoveAt=t;if(!dir||dir==='idle')return p.ctrl;if(dir===s.dir){s.candidate=null;s.candidateAt=0;return rawMove(dir)}if(s.candidate!==dir){s.candidate=dir;s.candidateAt=t;return p.ctrl}const hold=p.goalkeeper?150:260,confirm=p.goalkeeper?90:150;if(t-s.lastSwitch<hold||t-s.candidateAt<confirm)return p.ctrl;s.dir=dir;s.lastSwitch=t;s.candidate=null;s.candidateAt=0;return rawMove(dir)};
+    p.ctrl.move=(dir)=>{
+      const s=visual.get(p),t=now();if(!s)return rawMove(dir);s.lastMoveAt=t;if(!dir||dir==='idle')return p.ctrl;
+      if(dir===s.dir){s.candidate=null;s.candidateAt=0;return rawMove(dir)}
+      if(s.candidate!==dir){s.candidate=dir;s.candidateAt=t;return p.ctrl}
+      const involved=e.ball.owner===p||e.ball.intended===p||!!p.aiPreparingPass;
+      const hold=p.goalkeeper?80:involved?70:140,confirm=p.goalkeeper?40:involved?35:70;
+      if(t-s.lastSwitch<hold||t-s.candidateAt<confirm)return p.ctrl;
+      s.dir=dir;s.lastSwitch=t;s.candidate=null;s.candidateAt=0;return rawMove(dir)
+    };
     p.ctrl.idle=()=>{const s=visual.get(p);if(s){s.candidate=null;s.candidateAt=0}return rawIdle()};
   }
 
@@ -33,7 +41,6 @@ function boot(){
   e.freeAI=(dt,f)=>{if(!playable())return;oldFree(dt,f)};
 
   const gkStable=new Map();
-  function faceBall(g){const s=visual.get(g);if(!s)return;const fx=e.ball.x-g.x,fy=e.ball.y-(g.y+27);let dir;if(Math.abs(fx)>Math.abs(fy)*1.20)dir=fx>=0?'right':'left';else dir=fy>=0?'down':'up';g.facing=dir;if(g.lastDir!==dir){g.lastDir=dir;g.ctrl.move(dir)}}
   function holdPose(g){const dir=g.team==='blue'?'right':'left',a=attack(g.team),ctrl=g.ctrl;ctrl?.cancelPendingDirection?.();ctrl?.stop?.(false);ctrl?.setState?.(dir,{restart:false});ctrl?.show?.(0);g.lastDir=dir;g.facing=dir;if(e.ball.owner===g){e.ball.x=g.x+a*13;e.ball.y=g.y+16}}
   e.updateGoalkeepers=(dt,f)=>{
     if(!playable())return;oldGK(dt,f);const t=now();
@@ -41,12 +48,9 @@ function boot(){
       if(g.sentOff)continue;let s=gkStable.get(g);if(!s){s={lastX:g.x,lastY:g.y,lastMovedAt:t,stuckRecoveries:0};gkStable.set(g,s)}
       const mode=g.aiGoalkeeperMode||gkai.debug?.(g)?.mode||'SET';
       if(e.ball.owner===g&&['HOLD','SCAN','CALL_SUPPORT'].includes(mode)){s.lastX=g.x;s.lastY=g.y;s.lastMovedAt=t;holdPose(g);continue}
-      // IMPORTANTE: nunca reescrever x/y para "estabilizar" o goleiro. A posição calculada pela IA é soberana.
-      // O antigo código ancorava g.y no modo SET e podia cancelar o movimento do frame anterior.
-      const moved=Math.hypot(g.x-s.lastX,g.y-s.lastY);
-      if(moved>.35){s.lastX=g.x;s.lastY=g.y;s.lastMovedAt=t}
+      const moved=Math.hypot(g.x-s.lastX,g.y-s.lastY);if(moved>.35){s.lastX=g.x;s.lastY=g.y;s.lastMovedAt=t}
       g.y=clamp(g.y,f.top+12,f.bottom-42);
-      faceBall(g)
+      // Este módulo NÃO decide mais a direção visual do goleiro. ActionOrientation é a autoridade única.
     }
   };
 
