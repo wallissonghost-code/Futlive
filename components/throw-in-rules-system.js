@@ -1,11 +1,11 @@
 (()=>{'use strict';
-const VERSION='0.64.0';
+const VERSION='0.68.0';
 const other=t=>t==='blue'?'red':'blue';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function boot(){
   const e=window.FutLiveFootballEngine,game=document.getElementById('game');
   if(!e||!e.players?.length||!game||typeof e.takePossession!=='function'||typeof e.physics!=='function'){setTimeout(boot,50);return}
-  if(e.__throwInRulesV064)return;e.__throwInRulesV064=true;
+  if(e.__throwInRulesV068)return;e.__throwInRulesV068=true;
   const oldTake=e.takePossession.bind(e),oldPhysics=e.physics.bind(e);
   const state={active:false,taker:null,team:null,target:null,releasedAt:0,otherTouch:false,violating:false,directGoalHandled:false};
   const pid=p=>p?.el?.id||null;
@@ -72,6 +72,7 @@ function boot(){
     return r
   };
   window.FutLiveThrowInRules={version:VERSION,state,clear};
+  if(!document.querySelector('script[data-throwin-ai-policy]')){const s=document.createElement('script');s.dataset.throwinAiPolicy='1';s.src='./components/throw-in-ai-policy-system.js?v=0.68-'+Date.now();document.head.appendChild(s)}
 }
 boot();
 })();
