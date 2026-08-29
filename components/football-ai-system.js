@@ -1,159 +1,53 @@
 (()=>{'use strict';
-const VERSION='0.50';
+const VERSION='0.71';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const OTHER=t=>t==='blue'?'red':'blue';
 function boot(){
   const e=window.FutLiveFootballEngine;
   if(!e||!e.players?.length){setTimeout(boot,35);return}
-  if(e.__footballAIV050)return;e.__footballAIV050=true;
-
+  if(e.__footballAIV071)return;e.__footballAIV071=true;
   const old={moveToward:e.moveToward.bind(e),ownedAI:e.ownedAI.bind(e),freeAI:e.freeAI.bind(e),choosePassTarget:e.choosePassTarget.bind(e),intercept:e.intercept.bind(e)};
   const teams={blue:{phase:'DEFEND',previous:'DEFEND',changedAt:performance.now(),pressor:null,cover:null},red:{phase:'DEFEND',previous:'DEFEND',changedAt:performance.now(),pressor:null,cover:null}};
   let previousOwnerTeam=null,lastPossessionChange=performance.now();
-
-  const living=p=>p&&!p.sentOff;
+  const living=p=>p&&!p.sentOff&&!p.tempSuspended;
   const fielders=team=>e.players.filter(p=>living(p)&&!p.goalkeeper&&(!team||p.team===team));
   const opponents=team=>fielders(OTHER(team));
   const mates=(team,except)=>fielders(team).filter(p=>p!==except);
   const attackDir=team=>team==='blue'?1:-1;
   const goalX=(team,f)=>team==='blue'?f.right:f.left;
   const ownGoalX=(team,f)=>team==='blue'?f.left:f.right;
-
-  function predictBall(seconds=.35){
-    if(e.ball.owner){const p=e.ball.owner,a=attackDir(p.team);return{x:p.x+a*11,y:p.y+27,vx:0,vy:0}}
-    const drag=e.ball.type?.startsWith('shot')?.76:.60;
-    const factor=seconds>0?(1-Math.pow(drag,seconds))/Math.max(.001,-Math.log(drag)):0;
-    return{x:e.ball.x+e.ball.vx*factor,y:e.ball.y+e.ball.vy*factor,vx:e.ball.vx*Math.pow(drag,seconds),vy:e.ball.vy*Math.pow(drag,seconds)}
-  }
+  function predictBall(seconds=.35){if(e.ball.owner){const p=e.ball.owner,a=attackDir(p.team);return{x:p.x+a*11,y:p.y+27,vx:0,vy:0}}const drag=e.ball.type?.startsWith('shot')?.76:.60,factor=seconds>0?(1-Math.pow(drag,seconds))/Math.max(.001,-Math.log(drag)):0;return{x:e.ball.x+e.ball.vx*factor,y:e.ball.y+e.ball.vy*factor,vx:e.ball.vx*Math.pow(drag,seconds),vy:e.ball.vy*Math.pow(drag,seconds)}}
   function nearestOpponentDistance(team,q){const list=opponents(team);return list.length?Math.min(...list.map(o=>Math.hypot(q.x-o.x,q.y-o.y))):120}
-  function laneSafety(c,t){
-    const opps=opponents(c.team),dx=t.x-c.x,dy=t.y-c.y,len2=dx*dx+dy*dy||1;let min=999;
-    for(const o of opps){const u=clamp(((o.x-c.x)*dx+(o.y-c.y)*dy)/len2,0,1),px=c.x+dx*u,py=c.y+dy*u;min=Math.min(min,Math.hypot(o.x-px,o.y-py))}
-    return min
-  }
+  function laneSafety(c,t){const opps=opponents(c.team),dx=t.x-c.x,dy=t.y-c.y,len2=dx*dx+dy*dy||1;let min=999;for(const o of opps){const u=clamp(((o.x-c.x)*dx+(o.y-c.y)*dy)/len2,0,1),px=c.x+dx*u,py=c.y+dy*u;min=Math.min(min,Math.hypot(o.x-px,o.y-py))}return min}
   function updateTeamBrains(f){
-    const ownerTeam=e.ball.owner?.team||null,now=performance.now();
-    if(ownerTeam!==previousOwnerTeam){previousOwnerTeam=ownerTeam;lastPossessionChange=now}
-    for(const team of ['blue','red']){
-      const brain=teams[team],had=brain.phase;
-      let phase;
-      if(ownerTeam===team){
-        const progress=team==='blue'?(e.ball.x-f.left)/(f.right-f.left):(f.right-e.ball.x)/(f.right-f.left);
-        if(now-lastPossessionChange<850)phase='COUNTER_ATTACK';
-        else if(progress>.70)phase='FINAL_THIRD';
-        else if(progress>.42)phase='ATTACK';
-        else phase='BUILD_UP';
-      }else if(ownerTeam===OTHER(team)){
-        if(now-lastPossessionChange<800)phase='TRANSITION_DEFENSE';
-        else{
-          const danger=team==='blue'?(e.ball.x-f.left)/(f.right-f.left):(f.right-e.ball.x)/(f.right-f.left);
-          phase=danger<.32?'LOW_BLOCK':danger<.60?'MID_BLOCK':'HIGH_PRESS';
-        }
-      }else phase='LOOSE_BALL';
-      if(phase!==had){brain.previous=had;brain.phase=phase;brain.changedAt=now}
-      const candidates=fielders(team).map(p=>({p,d:Math.hypot(p.x-e.ball.x,p.y-e.ball.y)})).sort((a,b)=>a.d-b.d);
-      brain.pressor=candidates[0]?.p||null;brain.cover=candidates[1]?.p||null;
-    }
+    const ownerTeam=e.ball.owner?.team||null,now=performance.now();if(ownerTeam!==previousOwnerTeam){previousOwnerTeam=ownerTeam;lastPossessionChange=now}
+    for(const team of ['blue','red']){const brain=teams[team],had=brain.phase;let phase;if(ownerTeam===team){const progress=team==='blue'?(e.ball.x-f.left)/(f.right-f.left):(f.right-e.ball.x)/(f.right-f.left);if(now-lastPossessionChange<950)phase='COUNTER_ATTACK';else if(progress>.70)phase='FINAL_THIRD';else if(progress>.42)phase='ATTACK';else phase='BUILD_UP'}else if(ownerTeam===OTHER(team)){if(now-lastPossessionChange<1050)phase='TRANSITION_DEFENSE';else{const danger=team==='blue'?(e.ball.x-f.left)/(f.right-f.left):(f.right-e.ball.x)/(f.right-f.left);phase=danger<.28?'LOW_BLOCK':danger<.63?'MID_BLOCK':'HIGH_PRESS'}}else phase='LOOSE_BALL';if(phase!==had){brain.previous=had;brain.phase=phase;brain.changedAt=now}const target=e.ball.owner||e.ball,candidates=fielders(team).map(p=>({p,d:Math.hypot(p.x-target.x,p.y-target.y)})).sort((a,b)=>a.d-b.d);brain.pressor=candidates[0]?.p||null;brain.cover=candidates[1]?.p||null}
     if(e.game){e.game.dataset.blueAiPhase=teams.blue.phase;e.game.dataset.redAiPhase=teams.red.phase}
   }
-
   function separation(p,radius=34){let x=0,y=0,count=0;for(const q of e.players){if(q===p||!living(q))continue;const dx=p.x-q.x,dy=p.y-q.y,d=Math.hypot(dx,dy);if(d>0&&d<radius){const w=(radius-d)/radius;x+=dx/d*w;y+=dy/d*w;count++}}return count?{x,y}:{x:0,y:0}}
-  function steerMove(p,tx,ty,speed,dt){
-    if(!living(p))return 0;
-    const f=e.field(),dx=tx-p.x,dy=ty-p.y,d=Math.hypot(dx,dy);
-    p.aiVelocity=p.aiVelocity||{x:0,y:0};
-    if(d<1.4){p.aiVelocity.x*=Math.pow(.08,dt);p.aiVelocity.y*=Math.pow(.08,dt);if(Math.hypot(p.aiVelocity.x,p.aiVelocity.y)<5&&p.lastDir!=='idle'){p.lastDir='idle';p.ctrl.idle()}return d}
-    const arrive=clamp(d/44,.22,1),sep=separation(p,p.goalkeeper?24:38),desiredX=dx/d*speed*arrive+sep.x*speed*.48,desiredY=dy/d*speed*arrive+sep.y*speed*.48;
-    const accel=(p.personality==='wing'?255:220),maxDelta=accel*dt,dvx=desiredX-p.aiVelocity.x,dvy=desiredY-p.aiVelocity.y,dm=Math.hypot(dvx,dvy)||1,scale=Math.min(1,maxDelta/dm);
-    p.aiVelocity.x+=dvx*scale;p.aiVelocity.y+=dvy*scale;
-    const vm=Math.hypot(p.aiVelocity.x,p.aiVelocity.y),cap=speed*1.08;if(vm>cap){p.aiVelocity.x=p.aiVelocity.x/vm*cap;p.aiVelocity.y=p.aiVelocity.y/vm*cap}
-    p.x=clamp(p.x+p.aiVelocity.x*dt,f.left+p.radius,f.right-p.radius);p.y=clamp(p.y+p.aiVelocity.y*dt,f.top+p.radius,f.bottom-p.radius);
-    const dir=e.dirFor(p.aiVelocity.x,p.aiVelocity.y);p.facing=dir;if(p.lastDir!==dir&&vm>7){p.lastDir=dir;p.ctrl.move(dir)}return d
-  }
+  function steerMove(p,tx,ty,speed,dt){if(!living(p))return 0;const f=e.field(),dx=tx-p.x,dy=ty-p.y,d=Math.hypot(dx,dy);p.aiVelocity=p.aiVelocity||{x:0,y:0};if(d<1.4){p.aiVelocity.x*=Math.pow(.08,dt);p.aiVelocity.y*=Math.pow(.08,dt);if(Math.hypot(p.aiVelocity.x,p.aiVelocity.y)<5&&p.lastDir!=='idle'){p.lastDir='idle';p.ctrl.idle()}return d}const arrive=clamp(d/44,.22,1),sep=separation(p,p.goalkeeper?24:38),desiredX=dx/d*speed*arrive+sep.x*speed*.48,desiredY=dy/d*speed*arrive+sep.y*speed*.48,accel=(p.personality==='wing'?270:235),maxDelta=accel*dt,dvx=desiredX-p.aiVelocity.x,dvy=desiredY-p.aiVelocity.y,dm=Math.hypot(dvx,dvy)||1,scale=Math.min(1,maxDelta/dm);p.aiVelocity.x+=dvx*scale;p.aiVelocity.y+=dvy*scale;const vm=Math.hypot(p.aiVelocity.x,p.aiVelocity.y),cap=speed*1.10;if(vm>cap){p.aiVelocity.x=p.aiVelocity.x/vm*cap;p.aiVelocity.y=p.aiVelocity.y/vm*cap}p.x=clamp(p.x+p.aiVelocity.x*dt,f.left+p.radius,f.right-p.radius);p.y=clamp(p.y+p.aiVelocity.y*dt,f.top+p.radius,f.bottom-p.radius);const dir=e.dirFor(p.aiVelocity.x,p.aiVelocity.y);p.facing=dir;if(p.lastDir!==dir&&vm>7){p.lastDir=dir;p.ctrl.move(dir)}return d}
   e.moveToward=steerMove;
-
   function roleTarget(p,carrier,f,brain){
-    const a=attackDir(p.team),homeX=f.w*p.home[0],homeY=f.h*p.home[1],ballShift=(e.ball.x-f.w*.5)*.16;
-    let x=homeX+ballShift,y=homeY;
-    if(carrier&&carrier.team===p.team){
-      const progress=Math.abs(goalX(p.team,f)-carrier.x),advanced=progress<f.w*.38;
-      if(p.personality==='wing'){x=carrier.x+a*(advanced?72:96);y=clamp(homeY+(homeY<f.h*.5?-1:1)*f.h*.035,f.top+32,f.bottom-42)}
-      else if(p.personality==='finisher'){x=carrier.x+a*(advanced?112:92);y=(homeY+carrier.y)*.48}
-      else if(p.personality==='creator'){x=carrier.x-a*68;y=(homeY+carrier.y)*.52}
-      else if(p.personality==='support'){x=carrier.x-a*42;y=carrier.y+(homeY<carrier.y?-72:72)}
-      if(brain.phase==='COUNTER_ATTACK'){x+=a*(p.personality==='finisher'||p.personality==='wing'?38:18)}
-    }
-    return{x:clamp(x,f.left+32,f.right-32),y:clamp(y,f.top+32,f.bottom-44)}
-  }
+    const a=attackDir(p.team),homeX=f.w*p.home[0],homeY=f.h*p.home[1],ballShift=(e.ball.x-f.w*.5)*.20;let x=homeX+ballShift,y=homeY;
+    if(carrier&&carrier.team===p.team){const progress=Math.abs(goalX(p.team,f)-carrier.x),advanced=progress<f.w*.38;if(p.personality==='wing'){x=carrier.x+a*(advanced?88:112);y=clamp(homeY+(homeY<f.h*.5?-1:1)*f.h*.04,f.top+32,f.bottom-42)}else if(p.personality==='finisher'){x=carrier.x+a*(advanced?126:106);y=(homeY+carrier.y)*.48}else if(p.personality==='creator'){x=carrier.x-a*(advanced?42:58);y=(homeY+carrier.y)*.52}else if(p.personality==='support'){x=carrier.x+a*(advanced?20:-24);y=carrier.y+(homeY<carrier.y?-66:66)}if(brain.phase==='COUNTER_ATTACK'){x+=a*(p.personality==='finisher'||p.personality==='wing'?48:26)}}return{x:clamp(x,f.left+32,f.right-32),y:clamp(y,f.top+32,f.bottom-44)}}
   function defensiveTarget(p,carrier,f,brain){
     const ownX=ownGoalX(p.team,f),a=attackDir(p.team),homeX=f.w*p.home[0],homeY=f.h*p.home[1];
-    if(p===brain.pressor&&carrier)return{x:carrier.x-a*12,y:carrier.y};
-    if(p===brain.cover&&carrier)return{x:carrier.x-a*58,y:(carrier.y+homeY)*.5};
-    const block=brain.phase==='LOW_BLOCK'?.62:brain.phase==='MID_BLOCK'?.46:.34;
-    const bx=ownX+(goalX(p.team,f)-ownX)*block,ballY=e.ball.y;
-    return{x:clamp(homeX*.42+bx*.58,f.left+32,f.right-32),y:clamp(homeY*.58+ballY*.42,f.top+32,f.bottom-44)}
+    if(p===brain.pressor&&carrier){const leadX=(carrier.aiVelocity?.x||0)*.10,leadY=(carrier.aiVelocity?.y||0)*.10;return{x:carrier.x+leadX-a*7,y:carrier.y+leadY}}
+    if(p===brain.cover&&carrier)return{x:carrier.x-a*34,y:carrier.y+(homeY-carrier.y)*.28};
+    const block=brain.phase==='LOW_BLOCK'?.55:brain.phase==='MID_BLOCK'?.50:brain.phase==='HIGH_PRESS'?.58:.48,bx=ownX+(goalX(p.team,f)-ownX)*block,ballY=e.ball.y;return{x:clamp(homeX*.38+bx*.62,f.left+32,f.right-32),y:clamp(homeY*.54+ballY*.46,f.top+32,f.bottom-44)}
   }
-
-  e.choosePassTarget=(c)=>{
-    if(!c)return null;const f=e.field(),a=attackDir(c.team),opps=opponents(c.team);let best=null,bestScore=-1e9;
-    for(const m of mates(c.team,c)){
-      const forward=(m.x-c.x)*a,dist=e.dist(c,m),open=nearestOpponentDistance(c.team,m),lane=laneSafety(c,m),goalGain=Math.abs(goalX(c.team,f)-c.x)-Math.abs(goalX(c.team,f)-m.x);
-      const tooClose=dist<34?-55:0,tooFar=dist>f.w*.48?-45:0,offsideRisk=(c.team==='blue'?m.x>f.right-28:m.x<f.left+28)?-28:0;
-      let role=0;if(m.personality==='finisher')role+=goalGain>0?18:0;if(m.personality==='creator')role+=lane>32?12:0;if(m.personality==='wing')role+=open>48?14:0;
-      const score=open*.72+lane*.58+forward*.24+goalGain*.18-dist*.055+role+tooClose+tooFar+offsideRisk+(Math.random()-.5)*10;
-      if(score>bestScore){bestScore=score;best=m}
-    }
-    return bestScore>18?best:null
-  };
-
-  function runCarrier(c,dt,f){
-    const a=attackDir(c.team),brain=teams[c.team],enemy=OTHER(c.team),press=e.nearest(enemy,c).p,goal=goalX(c.team,f),goalDist=Math.abs(goal-c.x),pressure=press?e.dist(press,c):999,now=performance.now();
-    let tx=c.x+a*(brain.phase==='COUNTER_ATTACK'?52:32),ty=c.y;
-    if(press&&pressure<66){const ex=c.x-press.x,ey=c.y-press.y,m=Math.hypot(ex,ey)||1;tx+=ex/m*(pressure<36?34:20);ty+=ey/m*(pressure<36?34:20)}
-    if(c.personality==='wing')ty+=(c.home[1]<.5?-1:1)*18;
-    if(goalDist<f.w*.24)ty+=(f.h*.5-c.y)*.22;
-    steerMove(c,clamp(tx,f.left+30,f.right-30),clamp(ty,f.top+30,f.bottom-42),c.speed*(brain.phase==='COUNTER_ATTACK'?1.02:.82),dt);e.syncOwnedBall();
-    if(e.challengeOwner(c,dt))return;
-    if(now<c.nextThink)return;
-    const target=e.choosePassTarget(c),possess=now-e.ownerSince,close=goalDist<f.w*.22,shootScore=(1-goalDist/(f.w*.45))*c.skill.shoot+(pressure<30?-.20:0)+(c.personality==='finisher'?.16:0);
-    if(close&&possess>430&&now>e.actionLock&&shootScore>.45&&Math.random()<.44+c.skill.shoot*.30){e.shoot(c,f);return}
-    const passUrgency=(pressure<46?.36:0)+(possess>1350?.26:0)+(c.personality==='creator'?.16:0)+(target?.personality==='finisher'?.10:0);
-    if(target&&now>e.actionLock&&possess>360&&Math.random()<clamp(.40+c.skill.pass*.32+passUrgency,.42,.94)){e.pass(c,target);return}
-    c.nextThink=now+e.rand(260,620)
-  }
-
+  e.choosePassTarget=(c)=>{if(!c)return null;const f=e.field(),a=attackDir(c.team);let best=null,bestScore=-1e9;for(const m of mates(c.team,c)){const forward=(m.x-c.x)*a,dist=e.dist(c,m),open=nearestOpponentDistance(c.team,m),lane=laneSafety(c,m),goalGain=Math.abs(goalX(c.team,f)-c.x)-Math.abs(goalX(c.team,f)-m.x),tooClose=dist<34?-55:0,tooFar=dist>f.w*.48?-45:0,offsideRisk=(c.team==='blue'?m.x>f.right-28:m.x<f.left+28)?-28:0;let role=0;if(m.personality==='finisher')role+=goalGain>0?18:0;if(m.personality==='creator')role+=lane>32?12:0;if(m.personality==='wing')role+=open>48?14:0;const score=open*.72+lane*.58+forward*.24+goalGain*.18-dist*.055+role+tooClose+tooFar+offsideRisk+(Math.random()-.5)*10;if(score>bestScore){bestScore=score;best=m}}return bestScore>18?best:null};
+  function runCarrier(c,dt,f){const a=attackDir(c.team),brain=teams[c.team],enemy=OTHER(c.team),press=e.nearest(enemy,c).p,goal=goalX(c.team,f),goalDist=Math.abs(goal-c.x),pressure=press?e.dist(press,c):999,now=performance.now();let tx=c.x+a*(brain.phase==='COUNTER_ATTACK'?62:brain.phase==='BUILD_UP'?38:46),ty=c.y;if(press&&pressure<66){const ex=c.x-press.x,ey=c.y-press.y,m=Math.hypot(ex,ey)||1;tx+=ex/m*(pressure<36?34:20);ty+=ey/m*(pressure<36?34:20)}if(c.personality==='wing')ty+=(c.home[1]<.5?-1:1)*18;if(goalDist<f.w*.24)ty+=(f.h*.5-c.y)*.22;steerMove(c,clamp(tx,f.left+30,f.right-30),clamp(ty,f.top+30,f.bottom-42),c.speed*(brain.phase==='COUNTER_ATTACK'?1.06:.88),dt);e.syncOwnedBall();if(e.challengeOwner(c,dt))return;if(now<c.nextThink)return;const target=e.choosePassTarget(c),possess=now-e.ownerSince,close=goalDist<f.w*.22,shootScore=(1-goalDist/(f.w*.45))*c.skill.shoot+(pressure<30?-.20:0)+(c.personality==='finisher'?.16:0);if(close&&possess>430&&now>e.actionLock&&shootScore>.45&&Math.random()<.44+c.skill.shoot*.30){e.shoot(c,f);return}const passUrgency=(pressure<46?.36:0)+(possess>1250?.30:0)+(c.personality==='creator'?.16:0)+(target?.personality==='finisher'?.10:0);if(target&&now>e.actionLock&&possess>340&&Math.random()<clamp(.40+c.skill.pass*.32+passUrgency,.42,.94)){e.pass(c,target);return}c.nextThink=now+e.rand(240,560)}
   e.ownedAI=(dt,f)=>{
-    if(window.FutLiveMatchState?.phase&&window.FutLiveMatchState.phase!=='PLAYING')return;
-    updateTeamBrains(f);const c=e.ball.owner;if(!c)return;if(c.goalkeeper){old.ownedAI(dt,f);return}
-    const attackBrain=teams[c.team],defBrain=teams[OTHER(c.team)];
-    for(const p of mates(c.team,c)){const q=roleTarget(p,c,f,attackBrain);steerMove(p,q.x,q.y,p.speed*(attackBrain.phase==='COUNTER_ATTACK'?.94:.66),dt)}
-    for(const p of opponents(c.team)){const q=defensiveTarget(p,c,f,defBrain);steerMove(p,q.x,q.y,p.speed*(p===defBrain.pressor?.88:p===defBrain.cover?.72:.58),dt)}
+    if(window.FutLiveMatchState?.phase&&window.FutLiveMatchState.phase!=='PLAYING')return;updateTeamBrains(f);const c=e.ball.owner;if(!c)return;if(c.goalkeeper){old.ownedAI(dt,f);return}
+    const attackBrain=teams[c.team],defBrain=teams[OTHER(c.team)];for(const p of mates(c.team,c)){const q=roleTarget(p,c,f,attackBrain);steerMove(p,q.x,q.y,p.speed*(attackBrain.phase==='COUNTER_ATTACK'?1.00:attackBrain.phase==='FINAL_THIRD'?.78:.73),dt)}
+    for(const p of opponents(c.team)){const q=defensiveTarget(p,c,f,defBrain),transition=defBrain.phase==='TRANSITION_DEFENSE';const mul=p===defBrain.pressor?(transition?1.12:1.03):p===defBrain.cover?(transition?.94:.84):(defBrain.phase==='HIGH_PRESS'?.70:.62);steerMove(p,q.x,q.y,p.speed*mul,dt)}
     runCarrier(c,dt,f)
   };
-
-  function interceptPoint(p){
-    const horizons=[.16,.28,.42,.62,.85];let best={x:e.ball.x,y:e.ball.y,t:.16,cost:1e9};
-    for(const t of horizons){const q=predictBall(t),travel=Math.hypot(q.x-p.x,q.y-(p.y+27))/Math.max(1,p.speed),cost=Math.abs(travel-t)+travel*.18;if(cost<best.cost)best={x:q.x,y:q.y-27,t,cost}}
-    return best
-  }
-  e.freeAI=(dt,f)=>{
-    if(window.FutLiveMatchState?.phase&&window.FutLiveMatchState.phase!=='PLAYING')return;
-    updateTeamBrains(f);const now=performance.now();
-    for(const team of ['blue','red']){
-      const brain=teams[team],players=fielders(team),ranked=players.map(p=>{const q=interceptPoint(p);return{p,q,d:Math.hypot(q.x-p.x,q.y-p.y)}}).sort((a,b)=>a.d-b.d);
-      ranked.forEach((item,i)=>{const p=item.p;if(i===0){steerMove(p,item.q.x,item.q.y,p.speed*1.02,dt);return}if(i===1){const q=predictBall(.34);steerMove(p,q.x-attackDir(team)*38,q.y-27,p.speed*.72,dt);return}const home={x:f.w*p.home[0]+(e.ball.x-f.w*.5)*.12,y:f.h*p.home[1]+(e.ball.y-f.h*.5)*.08};steerMove(p,clamp(home.x,f.left+32,f.right-32),clamp(home.y,f.top+32,f.bottom-44),p.speed*.54,dt)})
-    }
-    e.updateGoalkeepers(dt,f);
-    if(now>=e.ball.pickupLock){const candidates=fielders().map(p=>({p,d:e.footDist(p)})).sort((a,b)=>a.d-b.d).slice(0,4);for(const {p,d} of candidates){if(d>13)continue;const speed=Math.hypot(e.ball.vx,e.ball.vy),control=clamp(.48+p.skill.control*.42-speed/900,.16,.91);if(Math.random()<control){e.takePossession(p,'anticipated-recovery');break}}}
-  };
-
-  e.intercept=(dt)=>{
-    if(e.ball.owner||performance.now()<e.ball.pickupLock)return;const speed=Math.hypot(e.ball.vx,e.ball.vy),candidates=fielders().filter(p=>p!==e.ball.lastTouch).map(p=>({p,d:e.footDist(p)})).sort((a,b)=>a.d-b.d).slice(0,4);
-    for(const {p,d} of candidates){if(e.ball.type==='pass'&&p===e.ball.intended&&d<=14&&Math.random()<.52+p.skill.control*.38){e.takePossession(p,'pass-received');return}if(e.ball.type==='pass'&&p.team!==e.ball.lastTouch?.team&&d<=12&&Math.random()<dt*(1.7+p.skill.defend*2.1+p.skill.vision*.7)){e.takePossession(p,'anticipated-interception');return}if(speed<100&&d<=12&&Math.random()<.44+p.skill.control*.38){e.takePossession(p,'recovery');return}}
-  };
-
-  window.FutLiveFootballAI={version:VERSION,teams,predictBall,getTeamState:team=>({...teams[team]}),debug:()=>({blue:{...teams.blue},red:{...teams.red},ball:{...predictBall(.4)}})};
-  if(e.game)e.game.dataset.aiVersion=VERSION;
+  function interceptPoint(p){const horizons=[.16,.28,.42,.62,.85];let best={x:e.ball.x,y:e.ball.y,t:.16,cost:1e9};for(const t of horizons){const q=predictBall(t),travel=Math.hypot(q.x-p.x,q.y-(p.y+27))/Math.max(1,p.speed),cost=Math.abs(travel-t)+travel*.18;if(cost<best.cost)best={x:q.x,y:q.y-27,t,cost}}return best}
+  e.freeAI=(dt,f)=>{if(window.FutLiveMatchState?.phase&&window.FutLiveMatchState.phase!=='PLAYING')return;updateTeamBrains(f);const now=performance.now();for(const team of ['blue','red']){const players=fielders(team),ranked=players.map(p=>{const q=interceptPoint(p);return{p,q,d:Math.hypot(q.x-p.x,q.y-p.y)}}).sort((a,b)=>a.d-b.d);ranked.forEach((item,i)=>{const p=item.p;if(i===0){steerMove(p,item.q.x,item.q.y,p.speed*1.08,dt);return}if(i===1){const q=predictBall(.30);steerMove(p,q.x-attackDir(team)*30,q.y-27,p.speed*.82,dt);return}const home={x:f.w*p.home[0]+(e.ball.x-f.w*.5)*.15,y:f.h*p.home[1]+(e.ball.y-f.h*.5)*.10};steerMove(p,clamp(home.x,f.left+32,f.right-32),clamp(home.y,f.top+32,f.bottom-44),p.speed*.58,dt)})}e.updateGoalkeepers(dt,f);if(now>=e.ball.pickupLock){const candidates=fielders().map(p=>({p,d:e.footDist(p)})).sort((a,b)=>a.d-b.d).slice(0,4);for(const {p,d} of candidates){if(d>13)continue;const speed=Math.hypot(e.ball.vx,e.ball.vy),control=clamp(.48+p.skill.control*.42-speed/900,.16,.91);if(Math.random()<control){e.takePossession(p,'anticipated-recovery');break}}}};
+  e.intercept=(dt)=>{if(e.ball.owner||performance.now()<e.ball.pickupLock)return;const speed=Math.hypot(e.ball.vx,e.ball.vy),candidates=fielders().filter(p=>p!==e.ball.lastTouch).map(p=>({p,d:e.footDist(p)})).sort((a,b)=>a.d-b.d).slice(0,4);for(const {p,d} of candidates){if(e.ball.type==='pass'&&p===e.ball.intended&&d<=14&&Math.random()<.52+p.skill.control*.38){e.takePossession(p,'pass-received');return}if(e.ball.type==='pass'&&p.team!==e.ball.lastTouch?.team&&d<=13&&Math.random()<dt*(2.0+p.skill.defend*2.3+p.skill.vision*.8)){e.takePossession(p,'anticipated-interception');return}if(speed<100&&d<=12&&Math.random()<.44+p.skill.control*.38){e.takePossession(p,'recovery');return}}};
+  window.FutLiveFootballAI={version:VERSION,teams,predictBall,getTeamState:team=>({...teams[team]}),debug:()=>({blue:{...teams.blue},red:{...teams.red},ball:{...predictBall(.4)}})};if(e.game)e.game.dataset.aiVersion=VERSION;
 }
 boot();
 })();
