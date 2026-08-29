@@ -4,8 +4,12 @@ async function openGame(page){
   await page.setViewportSize({width:390,height:844});
   const pageErrors=[];page.on('pageerror',err=>pageErrors.push(err?.stack||String(err)));
   await page.goto('http://127.0.0.1:4173/?v=0.61&qa=1',{waitUntil:'domcontentloaded'});
-  await page.waitForFunction(()=>window.FutLiveFootballEngine?.players?.length===14,null,{timeout:10000});
-  await page.evaluate(()=>{const e=window.FutLiveFootballEngine;for(const p of e.players){for(const key of ['x','y']){let value=p[key];Object.defineProperty(p,key,{configurable:true,enumerable:true,get(){return value},set(next){if(!Number.isFinite(next)){const id=p.el?.id||`${p.team}-${p.slot}`,f=e.field(),diag={key,next:String(next),id,phase:window.FutLiveMatchState?.phase,x:p.x,y:p.y,speed:p.speed,home:p.home,velocity:p.aiVelocity,radius:p.radius,field:f,ball:{x:e.ball.x,y:e.ball.y,vx:e.ball.vx,vy:e.ball.vy,type:e.ball.type,owner:e.ball.owner?.el?.id||null}};throw new Error(`NON_FINITE_COORD ${JSON.stringify(diag)}`)}value=next}})}}});
+  await page.waitForFunction(()=>window.FutLiveFootballEngine?.players?.length===14&&window.FutLiveCentralBrain&&window.FutLiveOutOfPlay&&window.FutLiveBoundaryRestarts,null,{timeout:10000});
+  await page.evaluate(()=>{
+    const e=window.FutLiveFootballEngine,rawMove=e.moveToward.bind(e);
+    e.moveToward=(p,tx,ty,speed,dt)=>{window.__qaLastMove={id:p?.el?.id||null,tx,ty,speed,dt,beforeVelocity:p?.aiVelocity?{x:p.aiVelocity.x,y:p.aiVelocity.y}:null,phase:window.FutLiveMatchState?.phase};return rawMove(p,tx,ty,speed,dt)};
+    for(const p of e.players){for(const key of ['x','y']){let value=p[key];Object.defineProperty(p,key,{configurable:true,enumerable:true,get(){return value},set(next){if(!Number.isFinite(next)){const id=p.el?.id||`${p.team}-${p.slot}`,f=e.field(),diag={key,next:String(next),id,phase:window.FutLiveMatchState?.phase,x:p.x,y:p.y,speed:p.speed,home:p.home,velocity:p.aiVelocity,radius:p.radius,lastMove:window.__qaLastMove,field:f,ball:{x:e.ball.x,y:e.ball.y,vx:e.ball.vx,vy:e.ball.vy,type:e.ball.type,owner:e.ball.owner?.el?.id||null}};throw new Error(`NON_FINITE_COORD ${JSON.stringify(diag)}`)}value=next}})}}
+  });
   return pageErrors;
 }
 
