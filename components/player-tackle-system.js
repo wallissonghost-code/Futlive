@@ -24,7 +24,6 @@ function boot(){
     const g=geometry(p,c),def=p.skill.defend||.5,comp=p.skill.composure||.5;
     if(g.rear&&def<.82){stats.rejectedRear++;return false}
     if(g.body<20||g.body>63||g.ball>57||g.angle<.38)return false;
-    // Se o corpo está claramente no caminho antes da bola, não mergulha no carrinho.
     if(g.body+5<g.ball){stats.rejectedBodyFirst++;return false}
     const precision=def*.46+comp*.24+clamp((57-g.ball)/42,0,1)*.22+g.angle*.18+urgency(p,c);
     const chance=clamp((precision-.34)*.30,.015,.19);
