@@ -1,12 +1,12 @@
 (()=>{'use strict';
-const VERSION='0.61.0';
+const VERSION='0.62.0';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const now=()=>performance.now();
 const attack=t=>t==='blue'?1:-1;
 function boot(){
   const e=window.FutLiveFootballEngine,pi=window.FutLivePlayerIntelligence,gkai=window.FutLiveGoalkeeperAI;
   if(!e||!e.players?.length||!pi||!gkai){setTimeout(boot,45);return}
-  if(e.__movementStabilityV0610)return;e.__movementStabilityV0610=true;
+  if(e.__movementStabilityV0620)return;e.__movementStabilityV0620=true;
 
   const roleById={player11:'wing',player12:'support',player13:'wing',player14:'support'};
   for(const p of e.players){const role=roleById[p.el?.id];if(!role)continue;p.personality=role;p.aiProfile=null;pi.profile(p)}
@@ -19,21 +19,6 @@ function boot(){
     p.ctrl.move=(dir)=>{const s=visual.get(p),t=now();if(!s)return rawMove(dir);s.lastMoveAt=t;if(!dir||dir==='idle')return p.ctrl;if(dir===s.dir){s.candidate=null;s.candidateAt=0;return rawMove(dir)}if(s.candidate!==dir){s.candidate=dir;s.candidateAt=t;return p.ctrl}const hold=p.goalkeeper?150:260,confirm=p.goalkeeper?90:150;if(t-s.lastSwitch<hold||t-s.candidateAt<confirm)return p.ctrl;s.dir=dir;s.lastSwitch=t;s.candidate=null;s.candidateAt=0;return rawMove(dir)};
     p.ctrl.idle=()=>{const s=visual.get(p);if(s){s.candidate=null;s.candidateAt=0}return rawIdle()};
   }
-
-  /* PRE_MATCH guard: impede a antiga encenação no centro de chegar à tela. */
-  const rawPaint=e.paint.bind(e);
-  e.paint=()=>{
-    const phase=window.FutLiveMatchState?.phase;
-    if(phase==='PRE_MATCH'){
-      const f=e.field();
-      for(const p of e.players){
-        const hx=f.w*(p.home?.[0]??.5),hy=f.h*(p.home?.[1]??.5);
-        const staging=Math.abs(p.x-f.w*.5)<95&&!p.__allowPrematchCenter;
-        if(staging){p.x=hx;p.y=hy;p.aiVelocity={x:0,y:0};p.lastDir='idle'}
-      }
-    }
-    return rawPaint();
-  };
 
   const oldOwned=e.ownedAI.bind(e),oldFree=e.freeAI.bind(e),oldGK=e.updateGoalkeepers.bind(e);
   const playable=()=>!window.FutLiveMatchState?.phase||window.FutLiveMatchState.phase==='PLAYING';
@@ -49,12 +34,7 @@ function boot(){
 
   const gkStable=new Map();
   function faceBall(g){const s=visual.get(g);if(!s)return;const fx=e.ball.x-g.x,fy=e.ball.y-(g.y+27);let dir;if(Math.abs(fx)>Math.abs(fy)*1.20)dir=fx>=0?'right':'left';else dir=fy>=0?'down':'up';g.facing=dir;if(g.lastDir!==dir){g.lastDir=dir;g.ctrl.move(dir)}}
-  function holdPose(g){
-    const dir=g.team==='blue'?'right':'left',a=attack(g.team),ctrl=g.ctrl;
-    ctrl?.cancelPendingDirection?.();ctrl?.stop?.(false);ctrl?.setState?.(dir,{restart:false});ctrl?.show?.(0);
-    g.lastDir=dir;g.facing=dir;
-    if(e.ball.owner===g){e.ball.x=g.x+a*13;e.ball.y=g.y+16}
-  }
+  function holdPose(g){const dir=g.team==='blue'?'right':'left',a=attack(g.team),ctrl=g.ctrl;ctrl?.cancelPendingDirection?.();ctrl?.stop?.(false);ctrl?.setState?.(dir,{restart:false});ctrl?.show?.(0);g.lastDir=dir;g.facing=dir;if(e.ball.owner===g){e.ball.x=g.x+a*13;e.ball.y=g.y+16}}
   e.updateGoalkeepers=(dt,f)=>{
     if(!playable())return;oldGK(dt,f);const t=now();
     for(const g of e.goalkeepers){
@@ -66,7 +46,6 @@ function boot(){
     }
   };
 
-  /* Tether tático: permite atacar, mas força recomposição quando um jogador abandona sua zona. */
   let recoveryLast=performance.now();
   function communicationExempts(p){const intent=window.FutLiveTeamCommunication?.get?.(p.team);return !!intent?.targets?.some?.(t=>t.p===p)}
   function nearestToPlay(team){const target=e.ball.owner||e.ball;return e.players.filter(p=>p.team===team&&!p.goalkeeper&&!p.sentOff&&!p.tempSuspended).map(p=>({p,d:e.dist(p,target)})).sort((a,b)=>a.d-b.d)}
