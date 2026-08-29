@@ -1,5 +1,5 @@
 (()=>{'use strict';
-const VERSION='0.3.0';
+const VERSION='0.3.1';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function boot(){
  const e=window.FutLiveFootballEngine,sp=window.FutLiveSetPieces,game=document.getElementById('game');
@@ -57,7 +57,17 @@ function boot(){
      setTimeout(()=>{if(!state.busy||state.type!=='THROW_IN')return;const opp=fielders(other(team)),target=mates.slice().sort((a,b)=>{const ao=opp.reduce((m,o)=>Math.min(m,e.dist(a,o)),999),bo=opp.reduce((m,o)=>Math.min(m,e.dist(b,o)),999);return bo-ao})[0]||mates[0];if(!target)return forceResume('throw-no-target');throwFrom(taker,target,side);finish(480)},680)
    },{heldBy:taker,timeout:3200});return true
  }
- function beginCorner(d){const f=e.field(),team=d.team,end=d.side==='left'?'left':'right',vertical=d.y<=(f.top+f.bottom)/2?'top':'bottom',spot={x:end==='left'?f.left:f.right,y:vertical==='top'?f.top:f.bottom},taker=chooseTaker(team,spot,'CORNER');if(!taker)return false;beginState('CORNER',team,taker,spot,'EXACT_CORNER');const map=new Map(),inX=end==='left'?1:-1,inY=vertical==='top'?1:-1,goalY=(f.goalTop+f.goalBottom)/2;map.set(taker,{x:spot.x+inX*18,y:spot.y+inY*22});const mates=fielders(team).filter(p=>p!==taker),defs=fielders(other(team));mates.forEach((p,i)=>map.set(p,{x:clamp(spot.x+inX*(58+i*13),f.left+30,f.right-30),y:clamp(goalY+(i%2?30:-30)-27,f.top+30,f.bottom-42)}));defs.forEach((p,i)=>map.set(p,{x:clamp(spot.x+inX*(42+i*10),f.left+30,f.right-30),y:clamp(goalY+(i%2?24:-24)-27,f.top+30,f.bottom-42)}));goalkeepers().forEach(g=>map.set(g,{x:g.team==='blue'?f.left+42:f.right-42,y:goalY-27}));position(map,spot,()=>{if(!state.busy)return;const target={x:spot.x+inX*(82+Math.random()*34),y:goalY+(Math.random()-.5)*62},curve=inY*inX*(.12+(taker.skill?.curve||.5)*.18);kickFrom(taker,target,'corner-cross',240+(taker.skill?.pass||.6)*36,curve);emit('futlive:corner-restart',{team,taker:pid(taker),end,vertical,x:spot.x,y:spot.y});finish(280)},{timeout:3400});return true}
+ function beginCorner(d){
+   const f=e.field(),team=d.team,end=d.side==='left'?'left':'right',vertical=d.y<=(f.top+f.bottom)/2?'top':'bottom',spot={x:end==='left'?f.left:f.right,y:vertical==='top'?f.top:f.bottom},taker=chooseTaker(team,spot,'CORNER');if(!taker)return false;
+   beginState('CORNER',team,taker,spot,'EXACT_CORNER');const map=new Map(),inX=end==='left'?1:-1,inY=vertical==='top'?1:-1,goalY=(f.goalTop+f.goalBottom)/2;
+   map.set(taker,{x:spot.x+inX*18,y:spot.y+inY*22});const mates=fielders(team).filter(p=>p!==taker),defs=fielders(other(team));
+   mates.forEach((p,i)=>map.set(p,{x:clamp(spot.x+inX*(58+i*13),f.left+30,f.right-30),y:clamp(goalY+(i%2?30:-30)-27,f.top+30,f.bottom-42)}));defs.forEach((p,i)=>map.set(p,{x:clamp(spot.x+inX*(42+i*10),f.left+30,f.right-30),y:clamp(goalY+(i%2?24:-24)-27,f.top+30,f.bottom-42)}));goalkeepers().forEach(g=>map.set(g,{x:g.team==='blue'?f.left+42:f.right-42,y:goalY-27}));
+   position(map,spot,()=>{if(!state.busy)return;const target={x:spot.x+inX*(82+Math.random()*34),y:goalY+(Math.random()-.5)*62},curve=inY*inX*(.12+(taker.skill?.curve||.5)*.18);kickFrom(taker,target,'corner-cross',240+(taker.skill?.pass||.6)*36,curve);
+     taker.restartExit={type:'CORNER_EXIT',until:performance.now()+1700,x:clamp(spot.x+inX*46,f.left+34,f.right-34),y:clamp(spot.y+inY*48,f.top+34,f.bottom-46),speedMul:.24};
+     taker.restartReceiveLockUntil=performance.now()+1250;
+     emit('futlive:corner-restart',{team,taker:pid(taker),end,vertical,x:spot.x,y:spot.y,exitUntil:taker.restartExit.until});finish(360)
+   },{timeout:3400});return true
+ }
  function beginGoalKick(d){const f=e.field(),team=d.team,g=goalkeepers(team)[0];if(!g)return false;const end=d.side==='right'?'right':'left',upper=d.y<=(f.top+f.bottom)/2,spot={x:end==='left'?f.left+58:f.right-58,y:(f.goalTop+f.goalBottom)/2+(upper?-24:24)};beginState('GOAL_KICK',team,g,spot,'GOAL_AREA');const map=new Map();map.set(g,{x:spot.x,y:spot.y-27});fielders(team).forEach(p=>map.set(p,{x:clamp(f.w*(p.home?.[0]??.5)+attack(team)*24,f.left+34,f.right-34),y:clamp(f.h*(p.home?.[1]??.5),f.top+34,f.bottom-46)}));fielders(other(team)).forEach(p=>map.set(p,{x:clamp(f.w*(p.home?.[0]??.5),f.left+34,f.right-34),y:clamp(f.h*(p.home?.[1]??.5),f.top+34,f.bottom-46)}));position(map,spot,()=>{if(!state.busy)return;const target=fielders(team).slice().sort((a,b)=>e.dist(b,g)-e.dist(a,g))[0];if(!target)return forceResume('goalkick-no-target');kickFrom(g,{x:target.x+attack(team)*28,y:target.y+27},'goal-kick',250);finish(280)},{timeout:3400});return true}
  function handle(d){if(!d||state.busy)return false;if(d.kind==='throw-in')return beginThrowIn(d);if(d.kind==='corner')return beginCorner(d);if(d.kind==='goal-kick')return beginGoalKick(d);return false}
  window.FutLiveBoundaryRestarts={version:VERSION,handle,beginThrowIn,beginCorner,beginGoalKick,forceResume,state};
