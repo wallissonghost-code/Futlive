@@ -1,12 +1,12 @@
 (()=>{'use strict';
-const VERSION='0.62.0';
+const VERSION='0.66.0';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const now=()=>performance.now();
 const attack=t=>t==='blue'?1:-1;
 function boot(){
   const e=window.FutLiveFootballEngine,pi=window.FutLivePlayerIntelligence,gkai=window.FutLiveGoalkeeperAI;
   if(!e||!e.players?.length||!pi||!gkai){setTimeout(boot,45);return}
-  if(e.__movementStabilityV0620)return;e.__movementStabilityV0620=true;
+  if(e.__movementStabilityV0660)return;e.__movementStabilityV0660=true;
 
   const roleById={player11:'wing',player12:'support',player13:'wing',player14:'support'};
   for(const p of e.players){const role=roleById[p.el?.id];if(!role)continue;p.personality=role;p.aiProfile=null;pi.profile(p)}
@@ -38,11 +38,15 @@ function boot(){
   e.updateGoalkeepers=(dt,f)=>{
     if(!playable())return;oldGK(dt,f);const t=now();
     for(const g of e.goalkeepers){
-      if(g.sentOff)continue;let s=gkStable.get(g);if(!s){s={anchorY:g.y,lastAnchorAt:t};gkStable.set(g,s)}
+      if(g.sentOff)continue;let s=gkStable.get(g);if(!s){s={lastX:g.x,lastY:g.y,lastMovedAt:t,stuckRecoveries:0};gkStable.set(g,s)}
       const mode=g.aiGoalkeeperMode||gkai.debug?.(g)?.mode||'SET';
-      if(e.ball.owner===g&&['HOLD','SCAN','CALL_SUPPORT'].includes(mode)){s.anchorY=g.y;s.lastAnchorAt=t;holdPose(g);continue}
-      if(mode==='SET'){const delta=g.y-s.anchorY;if(Math.abs(delta)>=14||t-s.lastAnchorAt>=240){s.anchorY+=delta*.48;s.lastAnchorAt=t}g.y=s.anchorY}else{s.anchorY=g.y;s.lastAnchorAt=t}
-      g.y=clamp(g.y,f.top+12,f.bottom-42);faceBall(g)
+      if(e.ball.owner===g&&['HOLD','SCAN','CALL_SUPPORT'].includes(mode)){s.lastX=g.x;s.lastY=g.y;s.lastMovedAt=t;holdPose(g);continue}
+      // IMPORTANTE: nunca reescrever x/y para "estabilizar" o goleiro. A posição calculada pela IA é soberana.
+      // O antigo código ancorava g.y no modo SET e podia cancelar o movimento do frame anterior.
+      const moved=Math.hypot(g.x-s.lastX,g.y-s.lastY);
+      if(moved>.35){s.lastX=g.x;s.lastY=g.y;s.lastMovedAt=t}
+      g.y=clamp(g.y,f.top+12,f.bottom-42);
+      faceBall(g)
     }
   };
 
